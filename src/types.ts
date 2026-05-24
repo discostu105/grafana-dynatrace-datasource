@@ -1,34 +1,14 @@
 import { DataSourceJsonData } from '@grafana/data';
 import { DataQuery } from '@grafana/schema';
 
-export interface MyQuery extends DataQuery {
-  queryText?: string;
-  constant: number;
+export interface DqlQuery extends DataQuery {
+  dqlQuery: string;
 }
 
-export const DEFAULT_QUERY: Partial<MyQuery> = {
-  constant: 6.5,
+export const DEFAULT_QUERY: Partial<DqlQuery> = {
+  dqlQuery: '',
 };
 
-export interface DataPoint {
-  Time: number;
-  Value: number;
-}
-
-export interface DataSourceResponse {
-  datapoints: DataPoint[];
-}
-
-/**
- * These are options configured for each DataSource instance
- */
-export interface MyDataSourceOptions extends DataSourceJsonData {
-  path?: string;
-}
-
-/**
- * Value that is used in the backend, but never sent over HTTP to the frontend
- */
-export interface MySecureJsonData {
-  apiKey?: string;
-}
+// Auth is supplied to the backend via DT_TENANT_URL and DT_TOKEN env vars,
+// so there is nothing configurable per-instance from the frontend (yet).
+export interface DqlDataSourceOptions extends DataSourceJsonData {}

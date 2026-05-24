@@ -3,3 +3,8 @@ services:
     extends:
       file: .config/docker-compose-base.yaml
       service: grafana
+    environment:
+      # Forwarded into the plugin process so pkg/dynatrace.NewFromEnv can read
+      # them. Set both in the shell before `docker compose up`.
+      DT_TENANT_URL: ${DT_TENANT_URL:-}
+      DT_TOKEN: ${DT_TOKEN:-}
