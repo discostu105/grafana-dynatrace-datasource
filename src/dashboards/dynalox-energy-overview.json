@@ -1,0 +1,607 @@
+{
+  "title": "DynaLox - Energy overview",
+  "uid": "dynalox-energy-overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "tags": [
+    "dql",
+    "dynalox"
+  ],
+  "timezone": "browser",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "refresh": "1m",
+  "templating": {
+    "list": [
+      {
+        "name": "DS_DYNATRACEGRAIL",
+        "type": "datasource",
+        "label": "Dynatrace",
+        "query": "discostu105-dynatracegrail-datasource",
+        "current": {
+          "text": "Dynatrace",
+          "value": "Dynatrace"
+        },
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Battery Power",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Speicher\" AND state.name == \"actual\" AND unit == \"kW\" } | fieldsAdd last = arrayLast(val)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 2,
+      "type": "gauge",
+      "title": "Battery SoC",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Speicher\" AND state.name == \"storage\" } | fieldsAdd last = arrayLast(val) | fields last"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Active Consumers",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.category == \"Energie\" AND state.name == \"actual\" AND unit == \"kW\" AND control.type == \"Meter\" }, by: { control.name } | fieldsAdd current_kW = arrayLast(val) | filter isNotNull(current_kW) AND current_kW > 0 | fields control.name, current_kW | sort current_kW desc"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "lastNotNull"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Consumer Details",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.category == \"Energie\" AND state.name == \"actual\" AND unit == \"kW\" AND control.type == \"Meter\" }, by: { control.name }\n| fieldsAdd current_kW = arrayLast(val)\n| filter isNotNull(current_kW) AND current_kW > 0\n| fields control.name, current_kW, val, timeframe, interval\n| sort current_kW desc"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "lastNotNull"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Total Consumption",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Stromverbrauch\" AND state.name == \"actual\" AND unit == \"kW\" } | fieldsAdd last = arrayLast(val)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Grid Draw",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Netzbezug\" AND state.name == \"actual\" AND unit == \"kW\" } | fieldsAdd last = arrayLast(val)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Grid Power (Gpwr)",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Energiefluss\" AND state.name == \"Gpwr\" AND unit == \"kW\" }"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Heating",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Heizung\" AND state.name == \"actual\" AND unit == \"kW\" } | fieldsAdd last = arrayLast(val)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Power (kW)",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries {\n  consumption = avg(loxone.control.value, filter: { control.name == \"Stromverbrauch\" AND state.name == \"actual\" AND unit == \"kW\" }),\n  grid = avg(loxone.control.value, filter: { control.name == \"Netzbezug\" AND state.name == \"actual\" AND unit == \"kW\" }),\n  pv = avg(loxone.control.value, filter: { control.name == \"PV-Strom\" AND state.name == \"actual\" AND unit == \"kW\" }),\n  heating = avg(loxone.control.value, filter: { control.name == \"Heizung\" AND state.name == \"actual\" AND unit == \"kW\" }),\n  battery = avg(loxone.control.value, filter: { control.name == \"Speicher\" AND state.name == \"actual\" AND unit == \"kW\" })\n}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "PV Production",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"PV-Strom\" AND state.name == \"actual\" AND unit == \"kW\" } | fieldsAdd last = arrayLast(val)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 11,
+      "type": "gauge",
+      "title": "Self-Consumption",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries {\n  consumption = avg(loxone.control.value, filter: { control.name == \"Stromverbrauch\" AND state.name == \"actual\" AND unit == \"kW\" }),\n  grid = avg(loxone.control.value, filter: { control.name == \"Netzbezug\" AND state.name == \"actual\" AND unit == \"kW\" })\n}\n| fieldsAdd rate = (1.0 - arrayLast(grid) / arrayLast(consumption)) * 100\n| fields rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "PV Production (Ppwr)",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Energiefluss\" AND state.name == \"Ppwr\" }"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Storage Power (Spwr)",
+      "datasource": {
+        "type": "discostu105-dynatracegrail-datasource",
+        "uid": "${DS_DYNATRACEGRAIL}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "discostu105-dynatracegrail-datasource",
+            "uid": "${DS_DYNATRACEGRAIL}"
+          },
+          "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Energiefluss\" AND state.name == \"Spwr\" AND unit == \"kW\" }"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    }
+  ]
+}
