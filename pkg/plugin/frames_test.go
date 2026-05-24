@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"testing"
+	"time"
 )
 
 func TestRecordsToFrames_Empty(t *testing.T) {
@@ -111,6 +112,45 @@ func TestRecordsToFrames_TableWithObjectColumn(t *testing.T) {
 	f := frames[0]
 	if len(f.Fields) != 2 {
 		t.Fatalf("want 2 columns, got %d", len(f.Fields))
+	}
+}
+
+func TestRecordsToFrames_GrailTimeframeShape(t *testing.T) {
+	// Reproduces the shape dtctl returns for a real `timeseries` query.
+	rec := map[string]interface{}{
+		"interval": "60000000000", // 60s in nanoseconds as string
+		"timeframe": map[string]interface{}{
+			"start": "2026-05-24T19:00:00Z",
+			"end":   "2026-05-24T19:03:00Z",
+		},
+		"val": []interface{}{1.0, 2.0, 3.0},
+	}
+	frames, err := recordsToFrames("A", []map[string]interface{}{rec})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(frames) != 1 {
+		t.Fatalf("want 1 frame, got %d", len(frames))
+	}
+	f := frames[0]
+	if len(f.Fields) != 2 {
+		t.Fatalf("want 2 fields (time, val), got %d", len(f.Fields))
+	}
+	if f.Fields[0].Name != "time" {
+		t.Errorf("first field should be time, got %q", f.Fields[0].Name)
+	}
+	if f.Fields[0].Len() != 3 {
+		t.Errorf("expected 3 timestamps, got %d", f.Fields[0].Len())
+	}
+	// Sanity: timestamps were reconstructed from start + i*interval
+	first := f.Fields[0].At(0).(time.Time)
+	want := time.Date(2026, 5, 24, 19, 0, 0, 0, time.UTC)
+	if !first.Equal(want) {
+		t.Errorf("first ts = %v, want %v", first, want)
+	}
+	second := f.Fields[0].At(1).(time.Time)
+	if got := second.Sub(first); got != time.Minute {
+		t.Errorf("step = %v, want 1m", got)
 	}
 }
 

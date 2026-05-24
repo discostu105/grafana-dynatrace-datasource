@@ -64,6 +64,11 @@ func recordToTimeseriesFrame(refID string, rec map[string]interface{}) (*data.Fr
 	valueKeys := make([]string, 0)
 	valueArrs := make(map[string][]interface{}, 0)
 	for _, k := range keys {
+		// Grail timeseries records always carry these structural columns;
+		// they are not series values and not useful labels.
+		if k == "timeframe" || k == "interval" {
+			continue
+		}
 		switch v := rec[k].(type) {
 		case []interface{}:
 			if len(v) == len(times) {
@@ -94,6 +99,16 @@ func recordToTimeseriesFrame(refID string, rec map[string]interface{}) (*data.Fr
 	}
 	return frame, nil
 }
+
+// scalarFromArrayLast handles the common DQL pattern:
+//   timeseries val = avg(...) | fieldsAdd last = arrayLast(val)
+// where `last` is a scalar in the record but the user really wants
+// "current value". We pluck it out so the stat/gauge panel "Last" reducer
+// works without configuration.
+//
+// Currently no-op — kept as a placeholder so the comment doesn't rot if we
+// need it. (Grafana's reduceOptions.calcs=lastNotNull does the right thing
+// on the val time series.)
 
 // recordsToTableFrame produces a single tabular frame: one row per record,
 // one column per key (union across all records). Column types are inferred
@@ -239,10 +254,24 @@ func unionKeys(records []map[string]interface{}) []string {
 	return keys
 }
 
-// extractTimestamps finds the column holding the per-bucket timestamps.
-// Strategy: prefer a key literally named "timestamp"; otherwise pick the
-// first []interface{} whose elements parse as RFC3339 strings.
+// extractTimestamps finds the timestamps for a timeseries record.
+//
+// Real Grail responses don't include a timestamp array. They include:
+//
+//	timeframe: { start: "<RFC3339>", end: "<RFC3339>" }
+//	interval:  "<nanoseconds as string>" (or number)
+//	<metric>:  [v0, v1, ...]
+//
+// Timestamps are derived: ts[i] = start + i*interval. Length matches the
+// metric arrays.
+//
+// As a fallback (older synthetic data and our unit-test fixtures) we still
+// accept an explicit "timestamp" array column or any []string column that
+// parses as RFC3339.
 func extractTimestamps(rec map[string]interface{}) (string, []time.Time, error) {
+	if ts, ok := timestampsFromTimeframe(rec); ok {
+		return "timeframe", ts, nil
+	}
 	if raw, ok := rec["timestamp"]; ok {
 		if arr, ok := raw.([]interface{}); ok {
 			if ts, err := parseTimestampArray(arr); err == nil {
@@ -263,6 +292,85 @@ func extractTimestamps(rec map[string]interface{}) (string, []time.Time, error) 
 		}
 	}
 	return "", nil, fmt.Errorf("no timestamp array column found in record")
+}
+
+// timestampsFromTimeframe reads timeframe + interval and reconstructs the
+// per-bucket timestamps. Returns false if the record doesn't have the shape.
+// The length is determined from the longest value-array column, so we don't
+// have to know the metric name up front.
+func timestampsFromTimeframe(rec map[string]interface{}) ([]time.Time, bool) {
+	tfRaw, ok := rec["timeframe"]
+	if !ok {
+		return nil, false
+	}
+	tf, ok := tfRaw.(map[string]interface{})
+	if !ok {
+		return nil, false
+	}
+	startStr, _ := tf["start"].(string)
+	if startStr == "" {
+		return nil, false
+	}
+	start, err := time.Parse(time.RFC3339Nano, startStr)
+	if err != nil {
+		start, err = time.Parse(time.RFC3339, startStr)
+		if err != nil {
+			return nil, false
+		}
+	}
+	step, ok := parseInterval(rec["interval"])
+	if !ok {
+		return nil, false
+	}
+	n := longestValueArray(rec)
+	if n == 0 {
+		return nil, false
+	}
+	out := make([]time.Time, n)
+	for i := 0; i < n; i++ {
+		out[i] = start.Add(time.Duration(i) * step)
+	}
+	return out, true
+}
+
+// parseInterval accepts the interval as either a number (ns) or a string
+// containing a number (ns) or a Go-parseable duration ("60s", "1m").
+func parseInterval(v interface{}) (time.Duration, bool) {
+	switch n := v.(type) {
+	case float64:
+		return time.Duration(int64(n)), true
+	case int64:
+		return time.Duration(n), true
+	case string:
+		if d, err := time.ParseDuration(n); err == nil {
+			return d, true
+		}
+		// numeric string in nanoseconds
+		var i int64
+		if _, err := fmt.Sscanf(n, "%d", &i); err == nil && i > 0 {
+			return time.Duration(i), true
+		}
+	}
+	return 0, false
+}
+
+// longestValueArray returns the longest []interface{} length across all
+// non-timestamp columns. That's the number of buckets in the response.
+func longestValueArray(rec map[string]interface{}) int {
+	max := 0
+	for k, v := range rec {
+		if k == "timeframe" || k == "interval" || k == "timestamp" {
+			continue
+		}
+		arr, ok := v.([]interface{})
+		if !ok {
+			continue
+		}
+		if len(arr) > max {
+			max = len(arr)
+		}
+	}
+	return max
 }
 
 func parseTimestampArray(arr []interface{}) ([]time.Time, error) {
