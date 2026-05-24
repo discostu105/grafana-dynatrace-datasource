@@ -4,14 +4,16 @@
   "name": "Dynatracegrail",
   "id": "discostu105-dynatracegrail-datasource",
   "metrics": true,
+  "alerting": true,
+  "annotations": true,
   "backend": true,
   "executable": "gpx_dynatracegrail",
   "info": {
-    "description": "",
+    "description": "Query Dynatrace Grail with DQL — timeseries, table, log, and event panels from a Dynatrace platform tenant.",
     "author": {
       "name": "Discostu105"
     },
-    "keywords": ["datasource"],
+    "keywords": ["dynatrace", "dql", "grail", "observability", "metrics"],
     "logos": {
       "small": "img/logo.svg",
       "large": "img/logo.svg"
