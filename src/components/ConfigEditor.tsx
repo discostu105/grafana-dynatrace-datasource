@@ -8,11 +8,21 @@ type Props = DataSourcePluginOptionsEditorProps<DqlDataSourceOptions, DqlSecureJ
 export function ConfigEditor({ options, onOptionsChange }: Props) {
   const { jsonData, secureJsonFields, secureJsonData } = options;
 
+  const updateJson = (patch: Partial<DqlDataSourceOptions>) => {
+    onOptionsChange({ ...options, jsonData: { ...jsonData, ...patch } });
+  };
+
   const onTenantUrlChange = (e: ChangeEvent<HTMLInputElement>) => {
-    onOptionsChange({
-      ...options,
-      jsonData: { ...jsonData, tenantUrl: e.target.value },
-    });
+    updateJson({ tenantUrl: e.target.value });
+  };
+
+  const onTimeoutChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const n = parseInt(e.target.value, 10);
+    updateJson({ queryTimeoutSeconds: Number.isFinite(n) && n > 0 ? n : undefined });
+  };
+
+  const onDefaultTimeframeChange = (e: ChangeEvent<HTMLInputElement>) => {
+    updateJson({ defaultTimeframe: e.target.value || undefined });
   };
 
   const onApiTokenChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -32,7 +42,7 @@ export function ConfigEditor({ options, onOptionsChange }: Props) {
 
   return (
     <div style={{ maxWidth: 720 }}>
-      <InlineField label="Tenant URL" labelWidth={20} tooltip="e.g. https://abc.apps.dynatrace.com">
+      <InlineField label="Tenant URL" labelWidth={22} tooltip="e.g. https://abc.apps.dynatrace.com">
         <Input
           width={50}
           placeholder="https://<env>.apps.dynatrace.com"
@@ -40,7 +50,7 @@ export function ConfigEditor({ options, onOptionsChange }: Props) {
           onChange={onTenantUrlChange}
         />
       </InlineField>
-      <InlineField label="API token" labelWidth={20} tooltip="Platform token, e.g. dt0s16.…">
+      <InlineField label="API token" labelWidth={22} tooltip="Platform token, e.g. dt0s16.…">
         <SecretInput
           width={50}
           placeholder="dt0s16.XXXX..."
@@ -48,6 +58,29 @@ export function ConfigEditor({ options, onOptionsChange }: Props) {
           value={secureJsonData?.apiToken ?? ''}
           onChange={onApiTokenChange}
           onReset={onApiTokenReset}
+        />
+      </InlineField>
+      <InlineField label="Query timeout (s)" labelWidth={22} tooltip="Per-query deadline. Default 30s.">
+        <Input
+          type="number"
+          width={20}
+          min={1}
+          max={600}
+          placeholder="30"
+          value={jsonData.queryTimeoutSeconds ?? ''}
+          onChange={onTimeoutChange}
+        />
+      </InlineField>
+      <InlineField
+        label="Default timeframe"
+        labelWidth={22}
+        tooltip="Used when the request has no time range (variable queries, alerting probes). Go duration string, e.g. 1h, 24h."
+      >
+        <Input
+          width={20}
+          placeholder="1h"
+          value={jsonData.defaultTimeframe ?? ''}
+          onChange={onDefaultTimeframeChange}
         />
       </InlineField>
     </div>

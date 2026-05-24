@@ -11,6 +11,10 @@ export const DEFAULT_QUERY: Partial<DqlQuery> = {
 
 export interface DqlDataSourceOptions extends DataSourceJsonData {
   tenantUrl?: string;
+  queryTimeoutSeconds?: number;
+  // Go duration string used when the panel has no time range (variable
+  // queries, alerting probes). Defaults to "1h" on the backend.
+  defaultTimeframe?: string;
 }
 
 export interface DqlSecureJsonData {
