@@ -88,7 +88,9 @@ func recordToTimeseriesFrame(refID string, rec map[string]interface{}) (*data.Fr
 	)
 	for _, k := range valueKeys {
 		vals := toFloat64Slice(valueArrs[k])
-		frame.Fields = append(frame.Fields, data.NewField(k, labels, vals))
+		f := data.NewField(k, labels, vals)
+		applyFieldConfig(f, labels)
+		frame.Fields = append(frame.Fields, f)
 	}
 	return frame, nil
 }
