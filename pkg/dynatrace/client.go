@@ -1,11 +1,12 @@
 // Package dynatrace wraps the dtctl SDK with the narrow surface this plugin
-// needs: env-var-based construction and a single DQL execution call.
+// needs: env-var-based construction and DQL execution.
 package dynatrace
 
 import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/dynatrace-oss/dtctl/sdk/api/query"
 	"github.com/dynatrace-oss/dtctl/sdk/httpclient"
@@ -40,12 +41,17 @@ func NewFromEnv() (*Client, error) {
 	return &Client{handler: query.NewHandler(httpClient)}, nil
 }
 
-// ExecuteDQL runs a DQL query via execute+poll and returns the raw records.
-// Callers control the deadline via ctx.
-func (c *Client) ExecuteDQL(ctx context.Context, dql string) ([]map[string]interface{}, error) {
-	resp, err := c.handler.ExecuteAndPoll(ctx, query.ExecuteRequest{Query: dql}, nil)
-	if err != nil {
-		return nil, err
+// Query runs a DQL query via execute+poll. Zero from/to means "let Grail use
+// its defaults" (used by CheckHealth's `data record` probe). Non-zero values
+// are passed as DefaultTimeframeStart/End and only apply when the DQL itself
+// does not specify a from:/to: clause.
+func (c *Client) Query(ctx context.Context, dql string, from, to time.Time) (*query.Response, error) {
+	req := query.ExecuteRequest{Query: dql}
+	if !from.IsZero() {
+		req.DefaultTimeframeStart = from.UTC().Format(time.RFC3339)
 	}
-	return resp.GetRecords(), nil
+	if !to.IsZero() {
+		req.DefaultTimeframeEnd = to.UTC().Format(time.RFC3339)
+	}
+	return c.handler.ExecuteAndPoll(ctx, req, nil)
 }
