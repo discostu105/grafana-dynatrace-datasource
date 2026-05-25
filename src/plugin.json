@@ -20,8 +20,16 @@
       "small": "img/logo.svg",
       "large": "img/logo.svg"
     },
-    "links": [],
-    "screenshots": [],
+    "links": [
+      { "name": "GitHub", "url": "https://github.com/discostu105/grafana-dql-datasource" },
+      { "name": "Issues", "url": "https://github.com/discostu105/grafana-dql-datasource/issues" },
+      { "name": "DQL reference", "url": "https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language" }
+    ],
+    "screenshots": [
+      { "name": "Energy overview", "path": "img/screenshot-energy.png" },
+      { "name": "Climate environment", "path": "img/screenshot-climate.png" },
+      { "name": "Miniserver health", "path": "img/screenshot-miniserver.png" }
+    ],
     "version": "%VERSION%",
     "updated": "%TODAY%"
   },
