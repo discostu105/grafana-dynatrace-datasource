@@ -96,7 +96,7 @@ alert rules, and shippable with at least one out-of-the-box dashboard.
 - Declare ad-hoc filter support: expose a `getTagKeys` and `getTagValues`
   method on the `DataSource` class.
 - `getTagKeys` runs a DQL probe (e.g. `fetch dt.entity.host | fieldsKeep
-  …` or a metadata DQL) and returns the set of dimensions the user can
+…` or a metadata DQL) and returns the set of dimensions the user can
   filter by. For v1, restrict to a small curated list (host, process,
   service, k8s.namespace) plus any columns observed in the last successful
   query of the current dashboard.

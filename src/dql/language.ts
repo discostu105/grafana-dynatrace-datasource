@@ -19,12 +19,37 @@ let registered = false;
 // Verbs / commands — kept in sync with the dt-dql-essentials skill's
 // "Commands" list.
 const KEYWORDS = [
-  'append', 'data', 'dedup', 'describe', 'expand', 'fetch', 'fields',
-  'fieldsAdd', 'fieldsFlatten', 'fieldsKeep', 'fieldsRemove', 'fieldsRename',
-  'fieldsSnapshot', 'fieldsSummary', 'filter', 'filterOut', 'join',
-  'joinNested', 'limit', 'load', 'lookup', 'makeTimeseries', 'metrics',
-  'parse', 'search', 'smartscapeEdges', 'smartscapeNodes', 'sort',
-  'summarize', 'timeseries', 'traverse',
+  'append',
+  'data',
+  'dedup',
+  'describe',
+  'expand',
+  'fetch',
+  'fields',
+  'fieldsAdd',
+  'fieldsFlatten',
+  'fieldsKeep',
+  'fieldsRemove',
+  'fieldsRename',
+  'fieldsSnapshot',
+  'fieldsSummary',
+  'filter',
+  'filterOut',
+  'join',
+  'joinNested',
+  'limit',
+  'load',
+  'lookup',
+  'makeTimeseries',
+  'metrics',
+  'parse',
+  'search',
+  'smartscapeEdges',
+  'smartscapeNodes',
+  'sort',
+  'summarize',
+  'timeseries',
+  'traverse',
 ];
 
 // Function names kept in a future-friendly export but not currently wired
@@ -32,8 +57,25 @@ const KEYWORDS = [
 // type.identifier). Suggestion-list fallback uses the Grail autocomplete
 // API instead.
 const OPERATORS = [
-  '==', '!=', '<=', '>=', '<', '>', '&&', '||', 'AND', 'OR', 'NOT', 'and', 'or', 'not',
-  '+', '-', '*', '/', '=',
+  '==',
+  '!=',
+  '<=',
+  '>=',
+  '<',
+  '>',
+  '&&',
+  '||',
+  'AND',
+  'OR',
+  'NOT',
+  'and',
+  'or',
+  'not',
+  '+',
+  '-',
+  '*',
+  '/',
+  '=',
 ];
 
 export const monarchLanguage: languages.IMonarchLanguage = {
@@ -62,27 +104,36 @@ export const monarchLanguage: languages.IMonarchLanguage = {
       [/\b\d+\.\d+([eE][+-]?\d+)?\b/, 'number.float'],
       [/\b\d+([eE][+-]?\d+)?\b/, 'number'],
       // Identifiers — match function calls first so they highlight
-      [/[a-zA-Z][\w.]*(?=\s*\()/, {
-        cases: {
-          '@keywords': 'keyword',
-          '@default': 'type.identifier',
+      [
+        /[a-zA-Z][\w.]*(?=\s*\()/,
+        {
+          cases: {
+            '@keywords': 'keyword',
+            '@default': 'type.identifier',
+          },
         },
-      }],
-      [/[a-zA-Z][\w.]*/, {
-        cases: {
-          '@keywords': 'keyword',
-          '@default': 'identifier',
+      ],
+      [
+        /[a-zA-Z][\w.]*/,
+        {
+          cases: {
+            '@keywords': 'keyword',
+            '@default': 'identifier',
+          },
         },
-      }],
+      ],
       // Punctuation
       [/[{}()\[\]]/, '@brackets'],
       [/[;,.]/, 'delimiter'],
-      [/@symbols/, {
-        cases: {
-          '@operators': 'operator',
-          '@default': '',
+      [
+        /@symbols/,
+        {
+          cases: {
+            '@operators': 'operator',
+            '@default': '',
+          },
         },
-      }],
+      ],
       [/\s+/, 'white'],
     ],
     comment: [
@@ -127,15 +178,17 @@ export const languageConfig: languages.LanguageConfiguration = {
 };
 
 // Suggestion shape from Grail's /platform/storage/query/v1/query:autocomplete
-// — we keep the keys we care about, ignore the rest.
-type GrailSuggestion = {
-  suggestion: string;
+// — we keep the keys we care about, ignore the rest. All fields are optional
+// so the same shape can be shared with the datasource's autocomplete()
+// method (which doesn't make hard guarantees about the proxied response).
+export type GrailSuggestion = {
+  suggestion?: string;
   alreadyTypedCharacters?: number;
   parts?: Array<{ type?: string; suggestion?: string; info?: string }>;
 };
-type GrailAutocompleteResponse = { suggestions: GrailSuggestion[] };
+export type GrailAutocompleteResponse = { suggestions?: GrailSuggestion[] };
 
-type AutocompleteFetcher = (dql: string, position: number) => Promise<GrailAutocompleteResponse>;
+export type AutocompleteFetcher = (dql: string, position: number) => Promise<GrailAutocompleteResponse>;
 
 function suggestionKind(monaco: Monaco, parts: GrailSuggestion['parts']): languages.CompletionItemKind {
   const ck = monaco.languages.CompletionItemKind;
