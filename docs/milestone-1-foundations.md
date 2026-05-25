@@ -139,3 +139,18 @@ prototype into something safe to point at a production tenant.
 - `pkg/plugin/` test coverage ≥ 70%, all green in CI.
 - README and CHANGELOG reviewed; provisioning example tested in
   `docker-compose.yaml`.
+
+## Status (2026-05-25)
+
+| Req  | Status      | Notes                                                                                                                                                                                                                  |
+| ---- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1.1 | ✅ Done     | `ConfigEditor.tsx` has tenant URL, `SecretInput` for token, query timeout, default timeframe. `NewDatasource` parses `JSONData`, decrypts `DecryptedSecureJSONData["apiToken"]`, builds per-instance `dynatrace.Client`. Env-var path removed. Secret key is `apiToken` (not the `token` spelled in the spec). |
+| R1.2 | ✅ Done     | `CheckHealth` + `classifyHealthError` covers tenant-URL invalid, token missing, DNS/TLS/connection failures, and surfaces auth/rate-limit/server errors via `httpclient.Err*` sentinels.                               |
+| R1.3 | ✅ Done     | `resolveTimeRange` uses `q.TimeRange.From/To`; falls back to per-instance `defaultTimeframe` (default 1h). Explicit `from:`/`to:` in DQL is preserved (no pre-parse).                                                  |
+| R1.4 | ✅ Done     | Frontend `applyTemplateVariables` runs `getTemplateSrv().replace(..., 'csv')`. Backend `pkg/macros` expands `$__timeFilter()`, `$__from`, `$__to`, `$__fromTime`/`$__toTime` (alias `$__timeFrom`/`$__timeTo`), `$__interval`, `$__interval_ms`. Idempotent. |
+| R1.5 | ✅ Done     | `recordsToFrames` detects timeseries (real Grail `timeframe + interval` shape and synthetic `timestamp` array) → table → falls through. Table mapper unions keys, infers `string/float/bool/time`, JSON-encodes nested values. Notifications surfaced as `data.Notice`. Dedicated array-of-scalars long-frame mode is not separately implemented — the table mapper handles those rows. |
+| R1.6 | ✅ Done     | `pkg/plugin/units.go` maps DQL unit literals (Percent, MilliSecond, Byte, kW, kWh, …) to Grafana units; `DisplayNameFromDS` set from labels in `applyFieldConfig`.                                                     |
+| R1.7 | ✅ Done     | `frames_test.go`, `logs_test.go`, `traces_test.go`, `fieldconfig_test.go`, `adhoc_test.go`, `dataobjects_test.go`, `macros_test.go` cover the mapper and macros. Frontend `derivedFields.test.ts`, `builder.test.ts`, `logsHooks.test.ts`, `tracesPostprocess*.test.ts` present; `filterQuery` empty-string rejection lives in `datasource.ts` and is covered indirectly. |
+| R1.8 | ✅ Done     | `README.md` rewritten with config, provisioning YAML, example queries, macro table, status matrix. `CHANGELOG.md` follows Keep-a-Changelog and notes the env-var removal under earlier 1.x entries.                  |
+
+**Overall:** Milestone 1 complete.
