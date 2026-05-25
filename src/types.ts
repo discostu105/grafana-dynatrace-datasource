@@ -43,6 +43,30 @@ export interface DqlDataSourceOptions extends DataSourceJsonData {
   // the first regex capture group; Grafana's logs panel renders them as
   // buttons that open the URL with ${__value.raw} substituted.
   derivedFields?: DerivedField[];
+  // Trace-to-logs / trace-to-metrics correlation. Stamped onto trace
+  // frames' Meta.Custom so Grafana's TraceView renders Span → Logs /
+  // Span → Metrics buttons. ${__span.traceId} / ${__span.spanId} are
+  // substituted by Grafana at click time.
+  tracesToLogs?: TracesToLogsConfig;
+  tracesToMetrics?: TracesToMetricsConfig;
+}
+
+export interface TracesToLogsConfig {
+  // UID of the target datasource (often this plugin's own uid for
+  // self-referential trace→DQL log correlation).
+  datasourceUid?: string;
+  // DQL template. ${__span.traceId} / ${__span.spanId} get substituted.
+  query?: string;
+  // Default: span time +/- 1h; only used when query has no $__timeFilter().
+  // Leaving optional for forward-compat with Grafana's contract.
+  spanStartTimeShift?: string;
+  spanEndTimeShift?: string;
+}
+
+export interface TracesToMetricsConfig {
+  datasourceUid?: string;
+  // Multiple named queries — Grafana shows one button per entry.
+  queries?: Array<{ name: string; query: string }>;
 }
 
 export interface DerivedField {

@@ -17,7 +17,7 @@
 // reconstructing the frame via MutableDataFrame.
 
 import { DataFrame, DataLink, Field, FieldType } from '@grafana/data';
-import type { DqlQuery } from './types';
+import type { DqlQuery, TracesToLogsConfig, TracesToMetricsConfig } from './types';
 
 const TRACE_VIS = 'trace';
 const ARRAY_FIELDS = new Set(['tags', 'serviceTags', 'logs', 'references']);
@@ -31,6 +31,44 @@ export function decodeTraceFrames(frames: DataFrame[]): DataFrame[] {
       continue;
     }
     decodeArrayFieldsInPlace(frame);
+  }
+  return frames;
+}
+
+// stampTraceCorrelations writes the configured trace-to-logs /
+// trace-to-metrics blocks onto every trace-vis frame's Meta.Custom so
+// Grafana's TraceView renders the per-span Span → Logs / Span → Metrics
+// buttons. Caller passes the parsed config from jsonData; missing
+// blocks are dropped from the stamp.
+export function stampTraceCorrelations(
+  frames: DataFrame[],
+  tracesToLogs?: TracesToLogsConfig,
+  tracesToMetrics?: TracesToMetricsConfig
+): DataFrame[] {
+  if (!frames?.length) {
+    return frames;
+  }
+  const hasLogs = !!(tracesToLogs?.datasourceUid && tracesToLogs.query);
+  const hasMetrics = !!(tracesToMetrics?.datasourceUid && tracesToMetrics.queries?.length);
+  if (!hasLogs && !hasMetrics) {
+    return frames;
+  }
+  for (const frame of frames) {
+    if (frame.meta?.preferredVisualisationType !== TRACE_VIS) {
+      continue;
+    }
+    const meta = frame.meta ?? {};
+    const custom = (meta.custom as Record<string, unknown> | undefined) ?? {};
+    if (hasLogs) {
+      custom.tracesToLogs = tracesToLogs;
+      // Grafana's TraceView reads `tracesToLogsV2` in newer builds;
+      // wire both names so we don't have to know the Grafana version.
+      custom.tracesToLogsV2 = tracesToLogs;
+    }
+    if (hasMetrics) {
+      custom.tracesToMetrics = tracesToMetrics;
+    }
+    (frame as unknown as { meta: typeof meta }).meta = { ...meta, custom };
   }
   return frames;
 }

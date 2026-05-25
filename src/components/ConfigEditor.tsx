@@ -4,6 +4,7 @@ import { InlineField, Input, SecretInput } from '@grafana/ui';
 import { DerivedField, DqlDataSourceOptions, DqlSecureJsonData } from '../types';
 import { SELECTORS } from '../selectors';
 import { DerivedFieldsEditor } from './DerivedFieldsEditor';
+import { TracesCorrelationEditor } from './TracesCorrelationEditor';
 
 type Props = DataSourcePluginOptionsEditorProps<DqlDataSourceOptions, DqlSecureJsonData>;
 
@@ -99,6 +100,7 @@ export function ConfigEditor({ options, onOptionsChange }: Props) {
           updateJson({ derivedFields: rules.filter((r) => r.name && r.matcherRegex && r.url) })
         }
       />
+      <TracesCorrelationEditor jsonData={jsonData} onChange={updateJson} />
     </div>
   );
 }

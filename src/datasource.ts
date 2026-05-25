@@ -21,7 +21,7 @@ import { AdhocFilter, DqlQuery, DqlDataSourceOptions, DEFAULT_QUERY } from './ty
 import { GrailAutocompleteResponse } from './dql/language';
 import { applyDerivedFields } from './derivedFields';
 import { buildLogContextDQL, buildLogsVolumeQuery } from './logsHooks';
-import { decodeTraceFrames, enhanceTraceListFrames } from './tracesPostprocess';
+import { decodeTraceFrames, enhanceTraceListFrames, stampTraceCorrelations } from './tracesPostprocess';
 
 // Curated tag keys we always expose for the ad-hoc filter UI. The Loxone
 // tenant we've seen in practice carries control.name / control.category /
@@ -63,10 +63,14 @@ export class DataSource
   implements DataSourceWithSupplementaryQueriesSupport<DqlQuery>, DataSourceWithLogsContextSupport<DqlQuery>
 {
   private readonly derivedFields?: DqlDataSourceOptions['derivedFields'];
+  private readonly tracesToLogs?: DqlDataSourceOptions['tracesToLogs'];
+  private readonly tracesToMetrics?: DqlDataSourceOptions['tracesToMetrics'];
 
   constructor(instanceSettings: DataSourceInstanceSettings<DqlDataSourceOptions>) {
     super(instanceSettings);
     this.derivedFields = instanceSettings.jsonData?.derivedFields;
+    this.tracesToLogs = instanceSettings.jsonData?.tracesToLogs;
+    this.tracesToMetrics = instanceSettings.jsonData?.tracesToMetrics;
   }
 
   getDefaultQuery() {
@@ -96,6 +100,7 @@ export class DataSource
           data = applyDerivedFields(data, this.derivedFields);
         }
         data = decodeTraceFrames(data);
+        data = stampTraceCorrelations(data, this.tracesToLogs, this.tracesToMetrics);
         data = enhanceTraceListFrames(data, this.uid, queryByRefId);
         return { ...resp, data };
       })
