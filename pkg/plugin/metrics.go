@@ -3,21 +3,37 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"net/http"
+	"net/http/httptest"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"net/http"
-	"net/http/httptest"
 )
 
-// pluginMetrics is the per-process Prometheus registry the plugin exposes
-// via backend.CollectMetricsHandler. Counters and histograms are bumped
-// from the query path; Grafana scrapes them at
-// /api/datasources/uid/<uid>/health/metrics (and rolls them up into the
-// datasources panel in the Plugins admin view).
+// CollectMetrics is invoked over gRPC by the Grafana server when the
+// /api/admin/plugins/<id>/metrics admin endpoint is scraped. We serve the
+// global Prometheus default registry (where promauto registered our
+// counters + histograms below, plus the standard go_/process_ collectors).
+func (d *Datasource) CollectMetrics(_ context.Context, _ *backend.CollectMetricsRequest) (*backend.CollectMetricsResult, error) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{}).ServeHTTP(rec, req)
+	body := bytes.TrimRight(rec.Body.Bytes(), "\n")
+	return &backend.CollectMetricsResult{PrometheusMetrics: body}, nil
+}
+
+// Custom counters + histograms registered on the global Prometheus
+// registry. The Grafana plugin SDK exposes that registry at
+// /api/plugins/<id>/metrics, alongside the standard go_/process_ series.
+//
+// No custom CollectMetricsHandler is needed — promauto + the SDK's
+// default handler is enough. Earlier versions used a separate registry
+// + manual ServeHTTP; v1.10.0 dropped that in favour of the simpler
+// promauto path so the metrics actually reach the scrape endpoint.
 var (
-	queryRequestsTotal = prometheus.NewCounterVec(
+	queryRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "grafana_dql",
 			Name:      "query_requests_total",
@@ -25,7 +41,7 @@ var (
 		},
 		[]string{"query_type", "status"},
 	)
-	queryDurationSeconds = prometheus.NewHistogramVec(
+	queryDurationSeconds = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "grafana_dql",
 			Name:      "query_duration_seconds",
@@ -34,7 +50,7 @@ var (
 		},
 		[]string{"query_type"},
 	)
-	autocompleteRequestsTotal = prometheus.NewCounterVec(
+	autocompleteRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "grafana_dql",
 			Name:      "autocomplete_requests_total",
@@ -42,25 +58,7 @@ var (
 		},
 		[]string{"status"},
 	)
-	pluginRegistry = prometheus.NewRegistry()
 )
-
-func init() {
-	pluginRegistry.MustRegister(queryRequestsTotal, queryDurationSeconds, autocompleteRequestsTotal)
-}
-
-// CollectMetrics is what Grafana calls when scraping the plugin's metrics
-// page. We hand off to the standard Prometheus HTTP handler against our
-// own registry — bytes get embedded in the CollectMetricsResult.
-func (d *Datasource) CollectMetrics(_ context.Context, _ *backend.CollectMetricsRequest) (*backend.CollectMetricsResult, error) {
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
-	promhttp.HandlerFor(pluginRegistry, promhttp.HandlerOpts{}).ServeHTTP(rec, req)
-	body := bytes.TrimRight(rec.Body.Bytes(), "\n")
-	return &backend.CollectMetricsResult{
-		PrometheusMetrics: body,
-	}, nil
-}
 
 // observeQuery records one query execution. status is one of "ok", "error",
 // "bad_request"; queryType comes from the queryModel (logs / timeseries).

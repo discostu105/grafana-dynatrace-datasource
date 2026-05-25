@@ -21,11 +21,11 @@ import (
 )
 
 var (
-	_ backend.QueryDataHandler       = (*Datasource)(nil)
-	_ backend.CheckHealthHandler     = (*Datasource)(nil)
-	_ backend.CallResourceHandler    = (*Datasource)(nil)
-	_ backend.CollectMetricsHandler  = (*Datasource)(nil)
-	_ instancemgmt.InstanceDisposer  = (*Datasource)(nil)
+	_ backend.QueryDataHandler      = (*Datasource)(nil)
+	_ backend.CheckHealthHandler    = (*Datasource)(nil)
+	_ backend.CallResourceHandler   = (*Datasource)(nil)
+	_ backend.CollectMetricsHandler = (*Datasource)(nil)
+	_ instancemgmt.InstanceDisposer = (*Datasource)(nil)
 )
 
 const (
