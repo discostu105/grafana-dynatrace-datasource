@@ -3,6 +3,18 @@ linters:
   enable:
     - errorlint
     - gosec
+    - govet
+    - staticcheck
+    - ineffassign
+    - unused
+    - gocritic
+    - misspell
+    - unconvert
+  settings:
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+        - singleCaseSwitch
   exclusions:
     paths:
       - node_modules

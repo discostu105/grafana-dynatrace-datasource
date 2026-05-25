@@ -72,7 +72,7 @@ This milestone takes the plugin from "fully functional internal tool" to
     row links to a trace detail.
   - **Trace detail** — `fetch spans | filter trace.id == "<id>"`; mapped
     to a Grafana traces frame (`Meta.PreferredVisualisation =
-    data.VisTypeTrace`) with the OpenTelemetry-compatible field set
+data.VisTypeTrace`) with the OpenTelemetry-compatible field set
     (`traceID`, `spanID`, `parentSpanID`, `operationName`, `serviceName`,
     `startTime`, `duration`, `tags`, `logs`).
 - Backend mapper `pkg/plugin/traces.go` produces the frame; unit tests

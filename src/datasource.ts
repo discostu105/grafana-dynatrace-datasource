@@ -4,6 +4,7 @@ import {
   DataSourceInstanceSettings,
   DataSourceWithLogsContextSupport,
   DataSourceWithSupplementaryQueriesSupport,
+  Field,
   LogRowContextOptions,
   LogRowContextQueryDirection,
   LogRowModel,
@@ -17,6 +18,7 @@ import { DataSourceWithBackend, getBackendSrv, getTemplateSrv } from '@grafana/r
 import { Observable, firstValueFrom } from 'rxjs';
 
 import { AdhocFilter, DqlQuery, DqlDataSourceOptions, DEFAULT_QUERY } from './types';
+import { GrailAutocompleteResponse } from './dql/language';
 
 // Curated tag keys we always expose for the ad-hoc filter UI. The Loxone
 // tenant we've seen in practice carries control.name / control.category /
@@ -37,11 +39,25 @@ const CURATED_TAG_KEYS = [
   'k8s.namespace.name',
 ];
 
+// Shape of an ad-hoc variable's filter rows + the surrounding variable model.
+// Mirrors @grafana/data's AdHocVariableModel; declared locally because
+// TypedVariableModel is a discriminated union we can't extend, and we only
+// need a structural subset for collection.
+interface AdHocVariableFilterShape {
+  key?: string;
+  operator?: string;
+  value?: unknown;
+}
+
+interface AdHocVariableShape {
+  type: 'adhoc';
+  filters?: AdHocVariableFilterShape[];
+  datasource?: string | { uid?: string; type?: string } | null;
+}
+
 export class DataSource
   extends DataSourceWithBackend<DqlQuery, DqlDataSourceOptions>
-  implements
-    DataSourceWithSupplementaryQueriesSupport<DqlQuery>,
-    DataSourceWithLogsContextSupport<DqlQuery>
+  implements DataSourceWithSupplementaryQueriesSupport<DqlQuery>, DataSourceWithLogsContextSupport<DqlQuery>
 {
   constructor(instanceSettings: DataSourceInstanceSettings<DqlDataSourceOptions>) {
     super(instanceSettings);
@@ -57,9 +73,7 @@ export class DataSource
   //  - stamps the dashboard's ad-hoc filters onto the query so the backend
   //    can substitute $__adhocFilters / auto-append `| filter ...`
   applyTemplateVariables(query: DqlQuery, scopedVars: ScopedVars): DqlQuery {
-    const dql = query.dqlQuery
-      ? getTemplateSrv().replace(query.dqlQuery, scopedVars, 'csv')
-      : query.dqlQuery;
+    const dql = query.dqlQuery ? getTemplateSrv().replace(query.dqlQuery, scopedVars, 'csv') : query.dqlQuery;
     const adhocFilters = this.collectAdhocFilters();
     return { ...query, dqlQuery: dql, adhocFilters };
   }
@@ -68,28 +82,31 @@ export class DataSource
     return !!query.dqlQuery && query.dqlQuery.trim().length > 0;
   }
 
+  // autocomplete hits the plugin's resource handler, which proxies Grail's
+  // /platform/storage/query/v1/query:autocomplete. Exposed so the
+  // QueryEditor's Monaco language registration can reuse it.
+  autocomplete(query: string, position: number): Promise<GrailAutocompleteResponse> {
+    return getBackendSrv().post(`/api/datasources/uid/${this.uid}/resources/autocomplete`, { query, position });
+  }
+
   // collectAdhocFilters pulls the dashboard's ad-hoc filter variables that
   // target this datasource. Grafana stores them as variables of type 'adhoc'
   // with a `filters: Array<{key, operator, value}>` payload.
   private collectAdhocFilters(): AdhocFilter[] {
-    const vars = getTemplateSrv().getVariables();
     const out: AdhocFilter[] = [];
-    for (const v of vars) {
-      // Older Grafana versions: variable.type === 'adhoc' && variable.datasource matches
-      if ((v as any).type !== 'adhoc') {
+    for (const v of getTemplateSrv().getVariables()) {
+      if (v.type !== 'adhoc') {
         continue;
       }
-      const ds = (v as any).datasource;
+      const adhoc = v as unknown as AdHocVariableShape;
+      const ds = adhoc.datasource;
       // datasource can be a string (name/uid), {uid}, or null; match by uid first
-      const matches =
-        !ds ||
-        ds === this.name ||
-        ds === this.uid ||
-        (ds?.uid && (ds.uid === this.uid || ds.uid === '$datasource'));
+      const dsUid = typeof ds === 'object' && ds !== null ? ds.uid : undefined;
+      const matches = !ds || ds === this.name || ds === this.uid || dsUid === this.uid || dsUid === '$datasource';
       if (!matches) {
         continue;
       }
-      for (const f of (v as any).filters ?? []) {
+      for (const f of adhoc.filters ?? []) {
         if (!f?.key || f?.value == null) {
           continue;
         }
@@ -109,7 +126,7 @@ export class DataSource
   async getTagKeys(): Promise<MetricFindValue[]> {
     const keys = new Set<string>(CURATED_TAG_KEYS);
     try {
-      const r = await this.callAutocomplete('fetch metric.series | filter ', 'fetch metric.series | filter '.length);
+      const r = await this.autocomplete('fetch metric.series | filter ', 'fetch metric.series | filter '.length);
       for (const s of r.suggestions ?? []) {
         if (s.suggestion && (s.parts?.[0]?.type === 'FIELD' || s.parts?.[0]?.type === 'PARAMETER_KEY')) {
           keys.add(s.suggestion);
@@ -146,20 +163,20 @@ export class DataSource
     const refId = `metric-find-${options?.variable?.name ?? 'q'}`;
     const interpolated = getTemplateSrv().replace(dql, undefined, 'csv');
 
-    const response = await firstValueFrom(
-      this.query({
-        targets: [{ refId, dqlQuery: interpolated } as DqlQuery],
-        range: options?.range,
-        requestId: refId,
-        timezone: 'utc',
-        interval: '1m',
-        intervalMs: 60_000,
-        startTime: Date.now(),
-        scopedVars: {},
-      } as any)
-    );
+    const request: DataQueryRequest<DqlQuery> = {
+      app: 'metric-find',
+      requestId: refId,
+      timezone: 'utc',
+      interval: '1m',
+      intervalMs: 60_000,
+      startTime: Date.now(),
+      scopedVars: {},
+      targets: [{ refId, dqlQuery: interpolated } as DqlQuery],
+      range: options?.range as TimeRange,
+    };
 
-    const frames = (response as any)?.data ?? [];
+    const response = await firstValueFrom(this.query(request));
+    const frames = response?.data ?? [];
     if (!frames.length) {
       return [];
     }
@@ -168,19 +185,25 @@ export class DataSource
     if (!allFields.length) {
       return [];
     }
-    const nonTime = allFields.filter((f: any) => (f.name ?? '').toLowerCase() !== 'time');
+    const nonTime = (allFields as Field[]).filter((f) => (f.name ?? '').toLowerCase() !== 'time');
     if (!nonTime.length) {
       return [];
     }
-    const fieldByName = (name: string) =>
-      nonTime.find((f: any) => (f.name ?? '').toLowerCase() === name.toLowerCase());
+    const fieldByName = (name: string) => nonTime.find((f) => (f.name ?? '').toLowerCase() === name.toLowerCase());
 
     const textField = fieldByName('text') ?? nonTime[0];
     const valueField = fieldByName('value') ?? textField;
     const len = textField.values?.length ?? 0;
 
-    const cellAt = (field: any, i: number) =>
-      field.values?.get ? field.values.get(i) : field.values?.[i];
+    // Grafana frames historically exposed values as a Vector with a get()
+    // method; newer versions use plain arrays. Handle both.
+    const cellAt = (field: { values?: unknown }, i: number): unknown => {
+      const vs = field.values as { get?: (i: number) => unknown } | unknown[] | undefined;
+      if (vs && typeof (vs as { get?: unknown }).get === 'function') {
+        return (vs as { get: (i: number) => unknown }).get(i);
+      }
+      return (vs as unknown[] | undefined)?.[i];
+    };
 
     const seen = new Set<string>();
     const out: MetricFindValue[] = [];
@@ -202,15 +225,6 @@ export class DataSource
     return out;
   }
 
-  // callAutocomplete hits the plugin's resource handler, which proxies
-  // Grail's /platform/storage/query/v1/query:autocomplete.
-  private callAutocomplete(query: string, position: number) {
-    return getBackendSrv().post(
-      `/api/datasources/uid/${this.uid}/resources/autocomplete`,
-      { query, position }
-    );
-  }
-
   // ---- Log volume histogram (DataSourceWithSupplementaryQueriesSupport) ---
   //
   // Grafana asks the data source for a "supplementary" query alongside the
@@ -222,10 +236,7 @@ export class DataSource
     return [SupplementaryQueryType.LogsVolume];
   }
 
-  getSupplementaryQuery(
-    options: SupplementaryQueryOptions,
-    query: DqlQuery
-  ): DqlQuery | undefined {
+  getSupplementaryQuery(options: SupplementaryQueryOptions, query: DqlQuery): DqlQuery | undefined {
     if (options.type !== SupplementaryQueryType.LogsVolume) {
       return undefined;
     }
@@ -277,8 +288,7 @@ export class DataSource
     origQuery?: DqlQuery
   ): Promise<DataQueryResponse> {
     const limit = options?.limit ?? 50;
-    const direction =
-      options?.direction === LogRowContextQueryDirection.Forward ? 'asc' : 'desc';
+    const direction = options?.direction === LogRowContextQueryDirection.Forward ? 'asc' : 'desc';
     const cmp = direction === 'asc' ? '>=' : '<=';
     const labels = row.labels ?? {};
     const selectorParts = Object.entries(labels)
@@ -292,21 +302,26 @@ export class DataSource
       `| sort timestamp ${direction} | limit ${limit}`;
 
     const refId = `${origQuery?.refId ?? 'A'}-ctx-${direction}`;
-    return firstValueFrom(
-      this.query({
-        targets: [{ refId, dqlQuery: dql, queryType: 'logs' } as DqlQuery],
-        requestId: refId,
-        timezone: 'utc',
-        interval: '1m',
-        intervalMs: 60_000,
-        startTime: Date.now(),
-        scopedVars: {},
-        range: {
-          from: { valueOf: () => ts - 60 * 60 * 1000 } as any,
-          to: { valueOf: () => ts + 60 * 60 * 1000 } as any,
-          raw: { from: '', to: '' } as any,
-        },
-      } as any)
-    );
+    const fromMs = ts - 60 * 60 * 1000;
+    const toMs = ts + 60 * 60 * 1000;
+    const request: DataQueryRequest<DqlQuery> = {
+      app: 'logs-context',
+      requestId: refId,
+      timezone: 'utc',
+      interval: '1m',
+      intervalMs: 60_000,
+      startTime: Date.now(),
+      scopedVars: {},
+      targets: [{ refId, dqlQuery: dql, queryType: 'logs' } as DqlQuery],
+      range: {
+        // Grafana's TimeRange has .from/.to as Dayjs/Moment-like objects;
+        // we expose .valueOf() returning ms which is what the backend
+        // proxy uses. The raw strings are unused for log-context queries.
+        from: { valueOf: () => fromMs } as unknown as TimeRange['from'],
+        to: { valueOf: () => toMs } as unknown as TimeRange['to'],
+        raw: { from: '', to: '' },
+      },
+    };
+    return firstValueFrom(this.query(request));
   }
 }

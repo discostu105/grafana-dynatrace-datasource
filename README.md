@@ -6,22 +6,23 @@ Query a Dynatrace platform tenant from Grafana panels, alert rules, and dashboar
 
 ## Status
 
-Beta. Tracks the milestones in [`docs/`](docs/). v1.2.0 covers most of Milestone 1 (correctness and configurability) plus the alerting + annotations integration points from Milestone 2.
+Beta. Tracks the milestones in [`docs/`](docs/). Milestones 1 (correctness & configurability), 2 (Grafana-native integrations) and most of 3 (editor polish, backend resilience) are landed; tracing is the remaining headline gap.
 
-| Capability                                | Status |
-|-------------------------------------------|--------|
-| Per-instance config (URL + SecureJSON token) | ✅ |
-| `$__timeFrom/To/from/to/interval/timeFilter` macros (server-side) | ✅ |
-| Template variable interpolation (`$var`, `${var:csv}`)            | ✅ |
-| Timeseries + table result shapes                                  | ✅ |
-| Real Grail `timeframe + interval` shape (not just synthetic timestamp arrays) | ✅ |
-| Unit + display-name field config from labels                      | ✅ |
-| Alerting + Annotations flags                                       | ✅ |
-| Variable queries (`metricFindQuery`)                              | ✅ stub |
-| Logs visualization                                                | 🟡 M2 |
-| Ad-hoc filters                                                    | 🟡 M2 |
-| Monaco DQL editor + autocomplete                                  | 🔜 M3 |
-| Traces                                                            | 🔜 M3 |
+| Capability                                                                    | Status |
+| ----------------------------------------------------------------------------- | ------ |
+| Per-instance config (URL + SecureJSON token)                                  | ✅     |
+| `$__timeFrom/To/from/to/interval/timeFilter` macros (server-side)             | ✅     |
+| Template variable interpolation (`$var`, `${var:csv}`)                        | ✅     |
+| Timeseries + table result shapes                                              | ✅     |
+| Real Grail `timeframe + interval` shape (not just synthetic timestamp arrays) | ✅     |
+| Unit + display-name field config from labels                                  | ✅     |
+| Alerting + Annotations                                                        | ✅     |
+| Variable queries (`metricFindQuery`)                                          | ✅     |
+| Logs visualization                                                            | ✅     |
+| Ad-hoc filters                                                                | ✅     |
+| Monaco DQL editor + Grail-backed autocomplete                                 | ✅     |
+| Backend retry + concurrency cap                                               | ✅     |
+| Traces                                                                        | 🔜 M3  |
 
 See [`docs/milestone-1-foundations.md`](docs/milestone-1-foundations.md), [`docs/milestone-2-grafana-native.md`](docs/milestone-2-grafana-native.md), and [`docs/milestone-3-editor-traces-polish.md`](docs/milestone-3-editor-traces-polish.md) for the full requirements.
 
@@ -83,16 +84,16 @@ fetch dt.entity.host
 
 ## Macros
 
-| Macro | Expands to |
-|-------|------------|
-| `$__timeFrom` / `$__fromTime` | panel from as RFC3339 string |
-| `$__timeTo` / `$__toTime`     | panel to as RFC3339 string |
-| `$__from`                     | epoch ms (integer) |
-| `$__to`                       | epoch ms (integer) |
+| Macro                         | Expands to                                                             |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `$__timeFrom` / `$__fromTime` | panel from as RFC3339 string                                           |
+| `$__timeTo` / `$__toTime`     | panel to as RFC3339 string                                             |
+| `$__from`                     | epoch ms (integer)                                                     |
+| `$__to`                       | epoch ms (integer)                                                     |
 | `$__interval`                 | DQL duration literal (`1s`, `5s`, …, `1d`) chosen to give ~200 buckets |
-| `$__interval_ms`              | ms (integer) |
-| `$__timeFilter(<field>)`      | `<field> >= "<from>" and <field> <= "<to>"` |
-| `$__timeFilter()`             | same, with `field=timestamp` |
+| `$__interval_ms`              | ms (integer)                                                           |
+| `$__timeFilter(<field>)`      | `<field> >= "<from>" and <field> <= "<to>"`                            |
+| `$__timeFilter()`             | same, with `field=timestamp`                                           |
 
 Expansion runs server-side, so alert rules get the same substitutions as panels.
 
