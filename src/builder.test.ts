@@ -6,11 +6,31 @@ function s(overrides: Partial<BuilderState> = {}): BuilderState {
 }
 
 describe('dqlFromBuilder', () => {
-  it('default state → bare count over logs', () => {
-    expect(dqlFromBuilder(DEFAULT_BUILDER)).toBe('fetch logs\n| summarize cnt = count()');
+  it('default (logs, count, bucket=auto) → makeTimeseries with no interval', () => {
+    expect(dqlFromBuilder(DEFAULT_BUILDER)).toBe('fetch logs\n| makeTimeseries cnt = count()');
   });
 
-  it('emits filter rows joined with AND', () => {
+  it('bucket=none → summarize, no makeTimeseries', () => {
+    const dql = dqlFromBuilder(s({ bucket: 'none', groupBy: ['loglevel'] }));
+    expect(dql).toBe('fetch logs\n| summarize cnt = count(), by:{loglevel}');
+    expect(dql).not.toContain('makeTimeseries');
+  });
+
+  it('bucket=fixed → makeTimeseries with interval and by', () => {
+    const dql = dqlFromBuilder(
+      s({
+        source: 'spans',
+        aggregation: { fn: 'avg', field: 'duration' },
+        groupBy: ['service.name'],
+        bucket: '5m',
+      })
+    );
+    expect(dql).toBe(
+      'fetch spans\n| makeTimeseries result = avg(duration), interval: 5m, by:{service.name}'
+    );
+  });
+
+  it('emits filter rows joined with lowercase and', () => {
     const dql = dqlFromBuilder(
       s({
         filters: [
@@ -21,20 +41,21 @@ describe('dqlFromBuilder', () => {
     );
     expect(dql).toContain('host.name == "h1"');
     expect(dql).toContain('service.name != "noisy"');
-    expect(dql.split('| filter ')[1]).toContain(' AND ');
+    expect(dql.split('| filter ')[1]).toContain(' and ');
+    expect(dql).not.toContain(' AND ');
   });
 
-  it('contains and matches operators use the right DQL functions', () => {
+  it('contains and matchesValue operators use the right DQL functions', () => {
     const dql = dqlFromBuilder(
       s({
         filters: [
-          { field: 'body', operator: 'contains', value: 'oops' },
-          { field: 'name', operator: 'matches', value: 'prod-*' },
+          { field: 'content', operator: 'contains', value: 'oops' },
+          { field: 'dt.tags', operator: 'matchesValue', value: '*prod*' },
         ],
       })
     );
-    expect(dql).toContain('contains(body, "oops")');
-    expect(dql).toContain('matchesValue(name, "prod-*")');
+    expect(dql).toContain('contains(content, "oops")');
+    expect(dql).toContain('matchesValue(dt.tags, "*prod*")');
   });
 
   it('drops incomplete filter rows', () => {
@@ -48,26 +69,7 @@ describe('dqlFromBuilder', () => {
       })
     );
     expect(dql).toContain('| filter k == "v"');
-    expect(dql).not.toMatch(/\| filter[^|]*AND/);
-  });
-
-  it('group-by adds bucket and dimensions in summarize', () => {
-    const dql = dqlFromBuilder(
-      s({
-        source: 'spans',
-        aggregation: { fn: 'avg', field: 'duration' },
-        groupBy: ['service.name'],
-        bucket: '5m',
-      })
-    );
-    expect(dql).toContain('fetch spans');
-    expect(dql).toContain('summarize cnt = avg(duration)');
-    expect(dql).toContain('by:{bin(timestamp, 5m), service.name}');
-  });
-
-  it('auto bucket maps to $__interval', () => {
-    const dql = dqlFromBuilder(s({ groupBy: ['k'], bucket: 'auto', aggregation: { fn: 'count' } }));
-    expect(dql).toContain('bin(timestamp, $__interval)');
+    expect(dql).not.toMatch(/\| filter[^|]* and /);
   });
 
   it('escapes embedded quotes in values', () => {
@@ -75,8 +77,41 @@ describe('dqlFromBuilder', () => {
     expect(dql).toContain('msg == "has \\"quote\\""');
   });
 
-  it('non-count aggregation defaults the field to value', () => {
-    const dql = dqlFromBuilder(s({ aggregation: { fn: 'avg' }, source: 'metric.series', groupBy: ['k'] }));
-    expect(dql).toContain('avg(value)');
+  it('non-count aggregation defaults the field to duration', () => {
+    const dql = dqlFromBuilder(s({ aggregation: { fn: 'avg' }, source: 'spans' }));
+    expect(dql).toContain('avg(duration)');
+  });
+
+  it('metrics source emits timeseries, not fetch', () => {
+    const dql = dqlFromBuilder(
+      s({
+        source: 'metrics',
+        aggregation: { fn: 'avg', field: 'dt.host.cpu.usage' },
+        groupBy: ['dt.smartscape.host'],
+        bucket: 'auto',
+      })
+    );
+    expect(dql).toBe('timeseries result = avg(`dt.host.cpu.usage`), by:{dt.smartscape.host}');
+    expect(dql).not.toContain('fetch');
+    expect(dql).not.toContain('makeTimeseries');
+  });
+
+  it('metrics + percentile adds rollup: avg and a default rank of 95', () => {
+    const dql = dqlFromBuilder(
+      s({
+        source: 'metrics',
+        aggregation: { fn: 'percentile', field: 'dt.service.request.response_time' },
+        bucket: '5m',
+      })
+    );
+    expect(dql).toBe(
+      'timeseries result = percentile(`dt.service.request.response_time`, 95, rollup: avg), interval: 5m'
+    );
+  });
+
+  it('metrics + count is coerced to avg (count of a metric is meaningless)', () => {
+    const dql = dqlFromBuilder(s({ source: 'metrics', aggregation: { fn: 'count' } }));
+    expect(dql).toContain('avg(`dt.host.cpu.usage`)');
+    expect(dql).not.toContain('count(');
   });
 });

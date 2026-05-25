@@ -5,19 +5,29 @@ export type DqlQueryType = 'timeseries' | 'logs' | 'traces';
 
 export type EditorMode = 'code' | 'builder';
 
+// Sources map to DQL `fetch <X>` data objects, except `metrics` which
+// switches the generator over to the `timeseries` command (which reads
+// pre-ingested metrics rather than scanning events). `dt.entity.*` is
+// deprecated in DQL — use `dt.smartscape.*` if topology is needed.
 export type BuilderSource =
-  | 'metric.series'
   | 'logs'
-  | 'events'
   | 'spans'
-  | 'dt.entity.host'
-  | 'dt.entity.service';
+  | 'events'
+  | 'bizevents'
+  | 'dt.davis.problems'
+  | 'dt.davis.events'
+  | 'metrics';
 
-export type BuilderOperator = '==' | '!=' | 'contains' | 'matches';
+// `matchesValue` is for array fields (dt.tags) or wildcard patterns ("*prod*").
+// Use `contains` for substring search on plain strings.
+export type BuilderOperator = '==' | '!=' | 'contains' | 'matchesValue';
 
-export type BuilderAggFn = 'count' | 'avg' | 'sum' | 'min' | 'max' | 'median';
+export type BuilderAggFn = 'count' | 'avg' | 'sum' | 'min' | 'max' | 'median' | 'percentile';
 
-export type BuilderBucket = 'auto' | '1m' | '5m' | '15m' | '1h';
+// `none`  → emit `summarize`, no time bucket (good for tables)
+// `auto`  → emit `makeTimeseries` / `timeseries` without `interval:` (engine picks)
+// fixed   → emit explicit `interval: 5m` etc.
+export type BuilderBucket = 'none' | 'auto' | '1m' | '5m' | '15m' | '1h';
 
 export interface BuilderFilter {
   field: string;
