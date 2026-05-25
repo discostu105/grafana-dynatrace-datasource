@@ -20,6 +20,7 @@ import { Observable, firstValueFrom, map } from 'rxjs';
 import { AdhocFilter, DqlQuery, DqlDataSourceOptions, DEFAULT_QUERY } from './types';
 import { GrailAutocompleteResponse } from './dql/language';
 import { applyDerivedFields } from './derivedFields';
+import { buildLogContextDQL, buildLogsVolumeQuery } from './logsHooks';
 
 // Curated tag keys we always expose for the ad-hoc filter UI. The Loxone
 // tenant we've seen in practice carries control.name / control.category /
@@ -257,24 +258,7 @@ export class DataSource
   }
 
   getSupplementaryQuery(options: SupplementaryQueryOptions, query: DqlQuery): DqlQuery | undefined {
-    if (options.type !== SupplementaryQueryType.LogsVolume) {
-      return undefined;
-    }
-    if (query.queryType !== 'logs' || !query.dqlQuery) {
-      return undefined;
-    }
-    // Wrap the user's logs query with a `summarize count(), by:{bin(timestamp,
-    // $__interval), severity}` so the result is a timeseries grouped by level.
-    // Backend's $__interval macro picks a sensible bucket size; we don't
-    // touch the original DQL beyond appending.
-    const wrapped = `${query.dqlQuery.trim()}
-| summarize count = count(), by:{interval = bin(timestamp, $__interval), severity = if(isNotNull(loglevel), loglevel, else: "unknown")}`;
-    return {
-      ...query,
-      refId: `${query.refId}-volume`,
-      dqlQuery: wrapped,
-      queryType: 'timeseries',
-    };
+    return buildLogsVolumeQuery(options.type, query);
   }
 
   getDataProvider(
@@ -307,23 +291,9 @@ export class DataSource
     options?: LogRowContextOptions,
     origQuery?: DqlQuery
   ): Promise<DataQueryResponse> {
-    const limit = options?.limit ?? 50;
+    const { dql, fromMs, toMs } = buildLogContextDQL(row, options);
     const direction = options?.direction === LogRowContextQueryDirection.Forward ? 'asc' : 'desc';
-    const cmp = direction === 'asc' ? '>=' : '<=';
-    const labels = row.labels ?? {};
-    const selectorParts = Object.entries(labels)
-      .filter(([k]) => k && !['level', 'loglevel', 'severity'].includes(k))
-      .map(([k, v]) => `${k} == "${String(v).replace(/"/g, '\\"')}"`);
-    const labelFilter = selectorParts.length ? selectorParts.join(' AND ') : 'true';
-    const ts = row.timeEpochMs;
-    const dql =
-      `fetch logs | filter ${labelFilter} ` +
-      `| filter timestamp ${cmp} fromUnixMillis(${ts}) ` +
-      `| sort timestamp ${direction} | limit ${limit}`;
-
     const refId = `${origQuery?.refId ?? 'A'}-ctx-${direction}`;
-    const fromMs = ts - 60 * 60 * 1000;
-    const toMs = ts + 60 * 60 * 1000;
     const request: DataQueryRequest<DqlQuery> = {
       app: 'logs-context',
       requestId: refId,
