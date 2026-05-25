@@ -14,14 +14,14 @@ export function TracesCorrelationEditor({ jsonData, onChange }: Props) {
     <div style={{ marginTop: 24, maxWidth: 720 }}>
       <h4 style={{ marginBottom: 4 }}>Trace ↔ logs</h4>
       <p style={{ marginTop: 0, color: 'var(--theme-colors-text-secondary, #888)', fontSize: 12 }}>
-        Renders a "Logs for this span" button in the trace view. <code>{'${__span.traceId}'}</code> and{' '}
+        Renders a &ldquo;Logs for this span&rdquo; button in the trace view. <code>{'${__span.traceId}'}</code> and{' '}
         <code>{'${__span.spanId}'}</code> are substituted at click time.
       </p>
       <TracesToLogsBlock value={jsonData.tracesToLogs} onChange={(v) => onChange({ tracesToLogs: dropIfEmpty(v) })} />
 
       <h4 style={{ marginTop: 24, marginBottom: 4 }}>Trace ↔ metrics</h4>
       <p style={{ marginTop: 0, color: 'var(--theme-colors-text-secondary, #888)', fontSize: 12 }}>
-        Each named query becomes a "Metrics for this span" button.
+        Each named query becomes a &ldquo;Metrics for this span&rdquo; button.
       </p>
       <TracesToMetricsBlock
         value={jsonData.tracesToMetrics}

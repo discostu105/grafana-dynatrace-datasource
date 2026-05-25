@@ -3,6 +3,36 @@ import { DataQuery } from '@grafana/schema';
 
 export type DqlQueryType = 'timeseries' | 'logs' | 'traces';
 
+export type EditorMode = 'code' | 'builder';
+
+export type BuilderSource =
+  | 'metric.series'
+  | 'logs'
+  | 'events'
+  | 'spans'
+  | 'dt.entity.host'
+  | 'dt.entity.service';
+
+export type BuilderOperator = '==' | '!=' | 'contains' | 'matches';
+
+export type BuilderAggFn = 'count' | 'avg' | 'sum' | 'min' | 'max' | 'median';
+
+export type BuilderBucket = 'auto' | '1m' | '5m' | '15m' | '1h';
+
+export interface BuilderFilter {
+  field: string;
+  operator: BuilderOperator;
+  value: string;
+}
+
+export interface BuilderState {
+  source: BuilderSource | string;
+  filters: BuilderFilter[];
+  groupBy: string[];
+  aggregation: { fn: BuilderAggFn; field?: string };
+  bucket: BuilderBucket;
+}
+
 export interface DqlQuery extends DataQuery {
   dqlQuery: string;
   // Default 'timeseries'. When 'logs', the backend maps records to a logs
@@ -19,6 +49,11 @@ export interface DqlQuery extends DataQuery {
   // by applyTemplateVariables() on the way to the backend. The backend
   // substitutes $__adhocFilters or auto-appends `| filter ...`.
   adhocFilters?: AdhocFilter[];
+  // Visual builder UX state. When the editor is in builder mode every
+  // change writes through to dqlQuery via dqlFromBuilder(); when in
+  // code mode dqlQuery is the source of truth and builder lags.
+  editorMode?: EditorMode;
+  builder?: BuilderState;
 }
 
 export interface AdhocFilter {

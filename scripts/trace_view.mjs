@@ -10,7 +10,7 @@ const ctx = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { widt
 const page = await ctx.newPage();
 const consoleErrs = [];
 page.on('console', (m) => {
-  if (['error', 'warning'].includes(m.type())) consoleErrs.push(`${m.type()}: ${m.text().slice(0, 300)}`);
+  if (['error', 'warning'].includes(m.type())) {consoleErrs.push(`${m.type()}: ${m.text().slice(0, 300)}`);}
 });
 page.on('pageerror', (e) => consoleErrs.push(`pageerror: ${e.message}`));
 
@@ -53,7 +53,10 @@ page.on('response', async (r) => {
   }
 });
 // Trigger one more run so the listener catches it.
-await page.getByRole('button', { name: /Run query/i }).click().catch(() => {});
+await page
+  .getByRole('button', { name: /Run query/i })
+  .click()
+  .catch(() => {});
 await page.waitForTimeout(8000);
 if (responses.length) {
   const fr = responses[responses.length - 1]?.results?.A?.frames?.[0];
@@ -76,17 +79,27 @@ try {
   // no toast — fine
 }
 
+// Try clicking a span row in the waterfall — this is the path that
+// previously triggered Cannot read properties of undefined (toLowerCase).
+try {
+  await page.getByText('okey-dokey-0', { exact: false }).first().click({ timeout: 5000 });
+  await page.waitForTimeout(3000);
+  console.error('  clicked a span');
+} catch (e) {
+  console.error('  could not click span:', e.message.slice(0, 100));
+}
+
 await page.screenshot({ path: '/tmp/trace-view.png', fullPage: true });
 
 const bodyText = await page.evaluate(() => document.body.innerText);
 const errSection = bodyText.match(/An unexpected error[\s\S]{0,1500}/);
-if (errSection) console.error('\nerror toast text:\n' + errSection[0]);
+if (errSection) {console.error('\nerror toast text:\n' + errSection[0]);}
 
 // Console errors are usually more informative.
 page.on('console', () => {}); // suppress further
 
 console.error('\nconsole errs (' + consoleErrs.length + '):');
-for (const e of consoleErrs.slice(0, 5)) console.error('  ', e);
+for (const e of consoleErrs.slice(0, 5)) {console.error('  ', e);}
 
 await browser.close();
 console.error('done — see /tmp/trace-view.png');

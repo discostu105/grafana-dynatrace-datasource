@@ -80,7 +80,7 @@ for (const path of ['/a/grafana-lokiexplore-app']) {
     return opts.map((o) => o.innerText.slice(0, 80));
   });
   console.log('--- options shown ---');
-  for (const o of options.slice(0, 20)) console.log('  ', o);
+  for (const o of options.slice(0, 20)) {console.log('  ', o);}
   const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 300));
   console.log('--- visible top of page ---');
   console.log(bodyText);

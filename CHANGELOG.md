@@ -6,6 +6,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-05-25
+
+### Added
+
+- Trace status enrichment: `mapStatusCode` now considers `request.is_failed`
+  alongside `dt.failure_detection.verdict` / `status.code`, and falls back to
+  `endpoint.name` for the trace `operationName` when `span.name` is empty.
+- Curated trace-list mode: when the result has a `trace.id` column the
+  frontend renames it to `traceID` and stamps an internal `DataLink` that
+  re-runs the source query as a span fetch — clickable trace IDs in tables.
+- R3.4 trace correlation: `tracesToLogs` / `tracesToMetrics` config sections
+  in ConfigEditor stamp `Meta.Custom.tracesToLogs[V2]` / `tracesToMetrics` on
+  trace frames so Grafana's TraceView renders Span → Logs / Span → Metrics
+  buttons (substitutes `${__span.traceId}` / `${__span.spanId}` at click).
+- R3.5 Visual Query Builder: Builder/Code toggle in the QueryEditor with a
+  form-driven UI (source, repeatable filters, group-by, aggregation, time
+  bucket). A one-way pure-function generator `dqlFromBuilder` produces the
+  DQL; switching code → builder confirms before overwriting hand-written DQL.
+
 ### Changed
 
 - Lifted shared test selectors into `src/selectors.ts` so Playwright specs and
