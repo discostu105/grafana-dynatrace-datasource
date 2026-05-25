@@ -23,7 +23,12 @@ VIS_MAP = {
     "areaChart": "timeseries",
     "barChart": "barchart",
     "categoricalBarChart": "barchart",
+    "pieChart": "piechart",
 }
+
+# DQL keywords that suggest the result is a percentage (0..100) — used to
+# decide whether to seed gauge min/max.
+PCT_HINTS = ("storage", "Percent", "percent", "soc", "humidity", "Luftfeuchte", "selfConsumption")
 
 DS_TEMPLATE = {"type": "discostu105-dynatracegrail-datasource", "uid": "${DS_DYNATRACEGRAIL}"}
 
@@ -50,7 +55,9 @@ def make_panel(idx, title, dql, vis):
             "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
             "orientation": "auto",
             "textMode": "auto",
-            "colorMode": "value",
+            # No color: thresholds-driven coloring is wrong for everything
+            # except deliberate gauges; just show the value.
+            "colorMode": "none",
             "graphMode": "area",
         }
     elif grafana_type == "gauge":
@@ -58,17 +65,46 @@ def make_panel(idx, title, dql, vis):
             "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
             "orientation": "auto",
             "showThresholdLabels": False,
-            "showThresholdMarkers": True,
+            "showThresholdMarkers": False,
         }
-        panel["fieldConfig"]["defaults"]["min"] = 0
-        panel["fieldConfig"]["defaults"]["max"] = 100
+        # Only seed 0..100 if the query looks like a percentage; otherwise
+        # let Grafana auto-scale.
+        if any(h in dql for h in PCT_HINTS):
+            panel["fieldConfig"]["defaults"]["min"] = 0
+            panel["fieldConfig"]["defaults"]["max"] = 100
+            panel["fieldConfig"]["defaults"]["unit"] = "percent"
     elif grafana_type == "barchart":
         panel["options"] = {"orientation": "auto", "showValue": "auto"}
+    elif grafana_type == "piechart":
+        panel["options"] = {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
+            "pieType": "donut",
+            "legend": {"displayMode": "list", "placement": "right"},
+        }
     elif grafana_type == "table":
+        # Dynatrace honeycomb/table tiles already project the rows they want
+        # when the DQL ends in `fields ...`. When the DQL keeps a timeseries
+        # shape (by:{dim} + val array), reduce series → rows so each
+        # dimension becomes one row instead of a wide time column.
         panel["options"] = {"showHeader": True}
-        panel["transformations"] = [
-            {"id": "reduce", "options": {"reducers": ["lastNotNull"]}}
-        ]
+        if "by:" in dql or "by :" in dql:
+            panel["transformations"] = [
+                {
+                    "id": "reduce",
+                    "options": {
+                        "reducers": ["lastNotNull"],
+                        "labelsToFields": True,
+                        "mode": "seriesToRows",
+                    },
+                },
+                {
+                    "id": "organize",
+                    "options": {
+                        "excludeByName": {"Field": True},
+                        "renameByName": {"Last *": "value"},
+                    },
+                },
+            ]
     else:  # timeseries
         panel["options"] = {
             "legend": {"displayMode": "list", "placement": "bottom", "showLegend": True},

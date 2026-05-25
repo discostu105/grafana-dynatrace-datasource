@@ -163,7 +163,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -301,7 +301,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -343,7 +343,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -433,7 +433,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },

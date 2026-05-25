@@ -163,7 +163,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -301,7 +301,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -391,7 +391,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -433,7 +433,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -474,7 +474,20 @@
           "options": {
             "reducers": [
               "lastNotNull"
-            ]
+            ],
+            "labelsToFields": true,
+            "mode": "seriesToRows"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Field": true
+            },
+            "renameByName": {
+              "Last *": "value"
+            }
           }
         }
       ]
@@ -565,7 +578,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -655,7 +668,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },

@@ -67,7 +67,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -98,7 +98,8 @@
       "fieldConfig": {
         "defaults": {
           "min": 0,
-          "max": 100
+          "max": 100,
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -112,7 +113,7 @@
         },
         "orientation": "auto",
         "showThresholdLabels": false,
-        "showThresholdMarkers": true
+        "showThresholdMarkers": false
       }
     },
     {
@@ -152,7 +153,20 @@
           "options": {
             "reducers": [
               "lastNotNull"
-            ]
+            ],
+            "labelsToFields": true,
+            "mode": "seriesToRows"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Field": true
+            },
+            "renameByName": {
+              "Last *": "value"
+            }
           }
         }
       ]
@@ -194,7 +208,20 @@
           "options": {
             "reducers": [
               "lastNotNull"
-            ]
+            ],
+            "labelsToFields": true,
+            "mode": "seriesToRows"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Field": true
+            },
+            "renameByName": {
+              "Last *": "value"
+            }
           }
         }
       ]
@@ -237,7 +264,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -279,7 +306,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -369,7 +396,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -459,7 +486,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -488,10 +515,7 @@
         }
       ],
       "fieldConfig": {
-        "defaults": {
-          "min": 0,
-          "max": 100
-        },
+        "defaults": {},
         "overrides": []
       },
       "options": {
@@ -504,7 +528,7 @@
         },
         "orientation": "auto",
         "showThresholdLabels": false,
-        "showThresholdMarkers": true
+        "showThresholdMarkers": false
       }
     },
     {

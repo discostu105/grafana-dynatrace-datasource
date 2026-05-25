@@ -66,7 +66,20 @@
           "options": {
             "reducers": [
               "lastNotNull"
-            ]
+            ],
+            "labelsToFields": true,
+            "mode": "seriesToRows"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Field": true
+            },
+            "renameByName": {
+              "Last *": "value"
+            }
           }
         }
       ]
@@ -157,7 +170,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -247,7 +260,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -289,7 +302,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -331,7 +344,7 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
@@ -373,13 +386,13 @@
         },
         "orientation": "auto",
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area"
       }
     },
     {
       "id": 9,
-      "type": "timeseries",
+      "type": "piechart",
       "title": "Daily Energy by Zone (kWh)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
@@ -402,26 +415,21 @@
         }
       ],
       "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        },
+        "defaults": {},
         "overrides": []
       },
       "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "pieType": "donut",
         "legend": {
           "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
+          "placement": "right"
         }
       }
     },
@@ -462,7 +470,20 @@
           "options": {
             "reducers": [
               "lastNotNull"
-            ]
+            ],
+            "labelsToFields": true,
+            "mode": "seriesToRows"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Field": true
+            },
+            "renameByName": {
+              "Last *": "value"
+            }
           }
         }
       ]
