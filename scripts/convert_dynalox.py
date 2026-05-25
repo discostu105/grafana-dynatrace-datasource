@@ -30,7 +30,7 @@ VIS_MAP = {
 # decide whether to seed gauge min/max.
 PCT_HINTS = ("storage", "Percent", "percent", "soc", "humidity", "Luftfeuchte", "selfConsumption")
 
-DS_TEMPLATE = {"type": "discostu105-dynatracegrail-datasource", "uid": "${DS_DYNATRACEGRAIL}"}
+DS_TEMPLATE = {"type": "discostu105-dynatracegrail-datasource", "uid": "P6C323D126547F71F"}
 
 
 def make_panel(idx, title, dql, vis):
@@ -82,29 +82,11 @@ def make_panel(idx, title, dql, vis):
             "legend": {"displayMode": "list", "placement": "right"},
         }
     elif grafana_type == "table":
-        # Dynatrace honeycomb/table tiles already project the rows they want
-        # when the DQL ends in `fields ...`. When the DQL keeps a timeseries
-        # shape (by:{dim} + val array), reduce series → rows so each
-        # dimension becomes one row instead of a wide time column.
+        # No transformations: the original DynaLox tile already projects the
+        # columns it wants via `| fields ...`. A blanket reduce turns the
+        # multi-column result into a single Field/Last keypair list, which
+        # is strictly worse for the panels that have an explicit projection.
         panel["options"] = {"showHeader": True}
-        if "by:" in dql or "by :" in dql:
-            panel["transformations"] = [
-                {
-                    "id": "reduce",
-                    "options": {
-                        "reducers": ["lastNotNull"],
-                        "labelsToFields": True,
-                        "mode": "seriesToRows",
-                    },
-                },
-                {
-                    "id": "organize",
-                    "options": {
-                        "excludeByName": {"Field": True},
-                        "renameByName": {"Last *": "value"},
-                    },
-                },
-            ]
     else:  # timeseries
         panel["options"] = {
             "legend": {"displayMode": "list", "placement": "bottom", "showLegend": True},
@@ -155,6 +137,34 @@ def main():
         panels.append(make_panel(idx, ptitle, str(dql), vis))
         idx += 1
 
+    # An optional query-typed variable populated from DQL. Each dashboard
+    # gets a "$control" variable backed by `summarize by:{control.name}` —
+    # proves metricFindQuery end-to-end and lets the user filter the panel
+    # set from the dashboard top bar.
+    # The datasource is referenced directly by its provisioned UID — see
+    # DS_TEMPLATE above. The dashboards are not authored to be portable
+    # across installations (the upstream DynaLox docs aren't either), so we
+    # skip the DS_X template variable indirection and the brittle resolution
+    # it requires.
+    variables = [
+        {
+            "name": "control",
+            "type": "query",
+            "label": "Control",
+            "datasource": DS_TEMPLATE,
+            # Variable query is a DQL string. Grafana (scenes engine) calls
+            # `query.trim()` on it and then passes it to the data source's
+            # metricFindQuery(dql, …) — see src/datasource.ts.
+            "query": 'fetch metric.series | filter contains(metric.key, "loxone.control") | summarize count(), by:{control.name} | fields control.name | sort control.name asc',
+            "refresh": 1,
+            "regex": "",
+            "multi": True,
+            "includeAll": True,
+            "allValue": ".*",
+            "current": {"text": ["All"], "value": ["$__all"], "selected": True},
+        },
+    ]
+
     dashboard = {
         "title": title,
         "uid": Path(out_path).stem,
@@ -164,18 +174,7 @@ def main():
         "timezone": "browser",
         "time": {"from": "now-24h", "to": "now"},
         "refresh": "1m",
-        "templating": {
-            "list": [
-                {
-                    "name": "DS_DYNATRACEGRAIL",
-                    "type": "datasource",
-                    "label": "Dynatrace",
-                    "query": "discostu105-dynatracegrail-datasource",
-                    "current": {"text": "Dynatrace", "value": "Dynatrace"},
-                    "hide": 0,
-                }
-            ]
-        },
+        "templating": {"list": variables},
         "panels": panels,
     }
 

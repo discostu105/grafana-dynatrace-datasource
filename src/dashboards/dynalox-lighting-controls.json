@@ -16,15 +16,28 @@
   "templating": {
     "list": [
       {
-        "name": "DS_DYNATRACEGRAIL",
-        "type": "datasource",
-        "label": "Dynatrace",
-        "query": "discostu105-dynatracegrail-datasource",
-        "current": {
-          "text": "Dynatrace",
-          "value": "Dynatrace"
+        "name": "control",
+        "type": "query",
+        "label": "Control",
+        "datasource": {
+          "type": "discostu105-dynatracegrail-datasource",
+          "uid": "P6C323D126547F71F"
         },
-        "hide": 0
+        "query": "fetch metric.series | filter contains(metric.key, \"loxone.control\") | summarize count(), by:{control.name} | fields control.name | sort control.name asc",
+        "refresh": 1,
+        "regex": "",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ],
+          "selected": true
+        }
       }
     ]
   },
@@ -35,7 +48,7 @@
       "title": "Light Meter Details",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -48,7 +61,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.category == \"Energie\" AND unit == \"kW\"\n  AND contains(control.name, \"Licht\") },\nby: { control.name, control.room, state.name }\n| fieldsAdd latest = arrayLast(val)\n| filter isNotNull(latest)\n| filter state.name == \"actual\" OR state.name == \"totalDay\" OR state.name == \"totalMonth\"\n| fieldsAdd metric = if(state.name == \"actual\", \"Current Power\", else: if(state.name == \"totalDay\", \"Today\", else: \"This Month\"))\n| fields control.name, control.room, metric, latest\n| sort control.name, metric"
         }
@@ -59,30 +72,7 @@
       },
       "options": {
         "showHeader": true
-      },
-      "transformations": [
-        {
-          "id": "reduce",
-          "options": {
-            "reducers": [
-              "lastNotNull"
-            ],
-            "labelsToFields": true,
-            "mode": "seriesToRows"
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Field": true
-            },
-            "renameByName": {
-              "Last *": "value"
-            }
-          }
-        }
-      ]
+      }
     },
     {
       "id": 2,
@@ -90,7 +80,7 @@
       "title": "Light Power Over Time (kW)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -103,7 +93,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.category == \"Energie\" AND state.name == \"actual\" AND unit == \"kW\"\n  AND contains(control.name, \"Licht\") },\nby: { control.name }"
         }
@@ -138,7 +128,7 @@
       "title": "Stairs Up",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -151,7 +141,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"gang_sensor_oben_motion\" AND state.name == \"active\" } | fieldsAdd last = arrayLast(val)"
         }
@@ -180,7 +170,7 @@
       "title": "Motion Sensor Activity",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -193,7 +183,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.category == \"Pr\u00e4senzerkennung\" AND state.name == \"active\" }, by: { control.name }"
         }
@@ -228,7 +218,7 @@
       "title": "Stairs Down",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -241,7 +231,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"gang_sensor_unten_motion\" AND state.name == \"active\" } | fieldsAdd last = arrayLast(val)"
         }
@@ -270,7 +260,7 @@
       "title": "Vorraum Motion",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -283,7 +273,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Bewegung\" AND state.name == \"active\" } | fieldsAdd last = arrayLast(val)"
         }
@@ -312,7 +302,7 @@
       "title": "Total Light Power",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -325,7 +315,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = sum(loxone.control.value), filter: { control.category == \"Energie\" AND state.name == \"actual\" AND unit == \"kW\" AND contains(control.name, \"Licht\") } | fieldsAdd last = arrayLast(val)"
         }
@@ -354,7 +344,7 @@
       "title": "Light Energy Today",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -367,7 +357,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = sum(loxone.control.value), filter: { control.category == \"Energie\" AND state.name == \"totalDay\" AND unit == \"kW\" AND contains(control.name, \"Licht\") } | fieldsAdd last = arrayLast(val)"
         }
@@ -396,7 +386,7 @@
       "title": "Daily Energy by Zone (kWh)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -409,7 +399,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.category == \"Energie\" AND state.name == \"totalDay\" AND unit == \"kW\"\n  AND contains(control.name, \"Licht\") },\nby: { control.name }\n| fieldsAdd latest = arrayLast(val)\n| filter isNotNull(latest) AND latest > 0\n| fields control.name, latest\n| sort latest desc"
         }
@@ -439,7 +429,7 @@
       "title": "Current Light Power by Zone",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -452,7 +442,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.category == \"Energie\" AND state.name == \"actual\" AND unit == \"kW\" AND contains(control.name, \"Licht\") }, by: { control.name } | fieldsAdd current = arrayLast(val) | filter isNotNull(current) AND current > 0 | fields control.name, current | sort current desc"
         }
@@ -463,30 +453,7 @@
       },
       "options": {
         "showHeader": true
-      },
-      "transformations": [
-        {
-          "id": "reduce",
-          "options": {
-            "reducers": [
-              "lastNotNull"
-            ],
-            "labelsToFields": true,
-            "mode": "seriesToRows"
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Field": true
-            },
-            "renameByName": {
-              "Last *": "value"
-            }
-          }
-        }
-      ]
+      }
     }
   ]
 }

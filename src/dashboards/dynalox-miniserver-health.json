@@ -16,15 +16,28 @@
   "templating": {
     "list": [
       {
-        "name": "DS_DYNATRACEGRAIL",
-        "type": "datasource",
-        "label": "Dynatrace",
-        "query": "discostu105-dynatracegrail-datasource",
-        "current": {
-          "text": "Dynatrace",
-          "value": "Dynatrace"
+        "name": "control",
+        "type": "query",
+        "label": "Control",
+        "datasource": {
+          "type": "discostu105-dynatracegrail-datasource",
+          "uid": "P6C323D126547F71F"
         },
-        "hide": 0
+        "query": "fetch metric.series | filter contains(metric.key, \"loxone.control\") | summarize count(), by:{control.name} | fields control.name | sort control.name asc",
+        "refresh": 1,
+        "regex": "",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ],
+          "selected": true
+        }
       }
     ]
   },
@@ -35,7 +48,7 @@
       "title": "CAN Bus Errors",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -48,7 +61,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries {\n  receive_errors = avg(loxone.can.receive_errors),\n  frame_errors = avg(loxone.can.frame_errors),\n  overruns = avg(loxone.can.overruns)\n}"
         }
@@ -83,7 +96,7 @@
       "title": "CAN Packets (Sent / Received)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -96,7 +109,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries {\n  sent = avg(loxone.can.packets_sent),\n  received = avg(loxone.can.packets_received)\n}"
         }
@@ -131,7 +144,7 @@
       "title": "Heap Memory",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -144,7 +157,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.system.heap) | fieldsAdd last = arrayLast(val)"
         }
@@ -173,7 +186,7 @@
       "title": "Heap Memory Over Time",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -186,7 +199,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries heap = avg(loxone.system.heap)"
         }
@@ -221,7 +234,7 @@
       "title": "LAN Errors",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -234,7 +247,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries {\n  tx_errors = avg(loxone.lan.tx_errors),\n  tx_collisions = avg(loxone.lan.tx_collisions),\n  rx_overflow = avg(loxone.lan.rx_overflow),\n  eof_errors = avg(loxone.lan.eof_errors)\n}"
         }
@@ -269,7 +282,7 @@
       "title": "LAN Errors (Total)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -282,7 +295,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries {\n  tx_err = avg(loxone.lan.tx_errors),\n  tx_coll = avg(loxone.lan.tx_collisions),\n  rx_ovf = avg(loxone.lan.rx_overflow),\n  eof = avg(loxone.lan.eof_errors)\n} | fieldsAdd total = arrayLast(tx_err) + arrayLast(tx_coll) + arrayLast(rx_ovf) + arrayLast(eof) | fields total"
         }
@@ -311,7 +324,7 @@
       "title": "LAN Packets (Total)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -324,7 +337,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries {\n  rx = avg(loxone.lan.rx_packets),\n  tx = avg(loxone.lan.tx_packets)\n} | fieldsAdd total = arrayLast(rx) + arrayLast(tx) | fields total"
         }
@@ -353,7 +366,7 @@
       "title": "LAN Packets (RX / TX)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -366,7 +379,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries {\n  rx = avg(loxone.lan.rx_packets),\n  tx = avg(loxone.lan.tx_packets)\n}"
         }
@@ -401,7 +414,7 @@
       "title": "Active Tasks",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -414,7 +427,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.system.tasks) | fieldsAdd last = arrayLast(val)"
         }
@@ -443,7 +456,7 @@
       "title": "Tasks Over Time",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -456,7 +469,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries tasks = avg(loxone.system.tasks)"
         }

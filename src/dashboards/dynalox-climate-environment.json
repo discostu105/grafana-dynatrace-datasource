@@ -16,15 +16,28 @@
   "templating": {
     "list": [
       {
-        "name": "DS_DYNATRACEGRAIL",
-        "type": "datasource",
-        "label": "Dynatrace",
-        "query": "discostu105-dynatracegrail-datasource",
-        "current": {
-          "text": "Dynatrace",
-          "value": "Dynatrace"
+        "name": "control",
+        "type": "query",
+        "label": "Control",
+        "datasource": {
+          "type": "discostu105-dynatracegrail-datasource",
+          "uid": "P6C323D126547F71F"
         },
-        "hide": 0
+        "query": "fetch metric.series | filter contains(metric.key, \"loxone.control\") | summarize count(), by:{control.name} | fields control.name | sort control.name asc",
+        "refresh": 1,
+        "regex": "",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ],
+          "selected": true
+        }
       }
     ]
   },
@@ -35,7 +48,7 @@
       "title": "Heat Source Inlet (BT10)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -48,7 +61,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Eintritt W\u00e4rmequellenmedium [BT10]\" AND state.name == \"value\" }"
         }
@@ -83,7 +96,7 @@
       "title": "Current CO\u2082",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -96,7 +109,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"CO2\" AND state.name == \"value\" AND unit == \"ppm\" }, by: { control.room } | fieldsAdd current = arrayLast(val) | filter isNotNull(current) | sort current desc"
         }
@@ -131,7 +144,7 @@
       "title": "Avg CO\u2082",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -144,7 +157,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"CO2\" AND state.name == \"value\" AND unit == \"ppm\" } | fieldsAdd last = arrayLast(val)"
         }
@@ -173,7 +186,7 @@
       "title": "CO\u2082 Over Time (ppm)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -186,7 +199,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"CO2\" AND state.name == \"value\" AND unit == \"ppm\" }, by: { control.room }"
         }
@@ -221,7 +234,7 @@
       "title": "Current Humidity",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -234,7 +247,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Luftfeuchte\" AND state.name == \"value\" AND (unit == \"%\" OR unit == \"%%\") }, by: { control.room } | fieldsAdd current = arrayLast(val) | filter isNotNull(current) | sort current desc"
         }
@@ -269,7 +282,7 @@
       "title": "Avg Humidity",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -282,7 +295,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Luftfeuchte\" AND state.name == \"value\" AND (unit == \"%\" OR unit == \"%%\") } | fieldsAdd last = arrayLast(val)"
         }
@@ -311,7 +324,7 @@
       "title": "Humidity Over Time (%)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -324,7 +337,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Luftfeuchte\" AND state.name == \"value\" AND (unit == \"%\" OR unit == \"%%\") }, by: { control.room }"
         }
@@ -359,7 +372,7 @@
       "title": "Indoor Temp",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -372,7 +385,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Intelligente Raumregelung\" AND state.name == \"tempActual\" AND unit == \"\u00b0\" } | fieldsAdd last = arrayLast(val)"
         }
@@ -401,7 +414,7 @@
       "title": "Heat Source (BT10)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -414,7 +427,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Eintritt W\u00e4rmequellenmedium [BT10]\" AND state.name == \"value\" AND unit == \"\u00b0C\" } | fieldsAdd last = arrayLast(val)"
         }
@@ -443,7 +456,7 @@
       "title": "Current Temperatures",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -456,7 +469,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.category == \"Temperatur\" AND state.name == \"value\" }, by: { control.room } | fieldsAdd current = arrayLast(val) | filter isNotNull(current) | fields control.room, current | sort current desc"
         }
@@ -467,30 +480,7 @@
       },
       "options": {
         "showHeader": true
-      },
-      "transformations": [
-        {
-          "id": "reduce",
-          "options": {
-            "reducers": [
-              "lastNotNull"
-            ],
-            "labelsToFields": true,
-            "mode": "seriesToRows"
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Field": true
-            },
-            "renameByName": {
-              "Last *": "value"
-            }
-          }
-        }
-      ]
+      }
     },
     {
       "id": 11,
@@ -498,7 +488,7 @@
       "title": "Temperature Over Time",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -511,7 +501,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.category == \"Temperatur\" AND state.name == \"value\" }, by: { control.room }"
         }
@@ -546,7 +536,7 @@
       "title": "Supply Temp (BT2)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -559,7 +549,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Heizung Vorlauf [BT2]\" AND state.name == \"value\" } | fieldsAdd last = arrayLast(val)"
         }
@@ -588,7 +578,7 @@
       "title": "Supply Temp (BT2)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -601,7 +591,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Heizung Vorlauf [BT2]\" AND state.name == \"value\" }"
         }
@@ -636,7 +626,7 @@
       "title": "Hot Water (BT7)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 12,
@@ -649,7 +639,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Warmwasser [BT7]\" AND state.name == \"value\" } | fieldsAdd last = arrayLast(val)"
         }
@@ -678,7 +668,7 @@
       "title": "Hot Water (BT7)",
       "datasource": {
         "type": "discostu105-dynatracegrail-datasource",
-        "uid": "${DS_DYNATRACEGRAIL}"
+        "uid": "P6C323D126547F71F"
       },
       "gridPos": {
         "x": 0,
@@ -691,7 +681,7 @@
           "refId": "A",
           "datasource": {
             "type": "discostu105-dynatracegrail-datasource",
-            "uid": "${DS_DYNATRACEGRAIL}"
+            "uid": "P6C323D126547F71F"
           },
           "dqlQuery": "timeseries val = avg(loxone.control.value), filter: { control.name == \"Warmwasser [BT7]\" AND state.name == \"value\" }"
         }

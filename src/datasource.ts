@@ -1,5 +1,6 @@
-import { DataSourceInstanceSettings, ScopedVars } from '@grafana/data';
+import { DataSourceInstanceSettings, MetricFindValue, ScopedVars, TimeRange } from '@grafana/data';
 import { DataSourceWithBackend, getTemplateSrv } from '@grafana/runtime';
+import { firstValueFrom } from 'rxjs';
 
 import { DqlQuery, DqlDataSourceOptions, DEFAULT_QUERY } from './types';
 
@@ -27,45 +28,78 @@ export class DataSource extends DataSourceWithBackend<DqlQuery, DqlDataSourceOpt
     return !!query.dqlQuery && query.dqlQuery.trim().length > 0;
   }
 
-  // metricFindQuery powers dashboard variable queries. The DQL must return
-  // either:
-  //   - one column → each row becomes { text, value: text }
-  //   - two columns named text + value (case-insensitive) → use them
-  //   - otherwise → first column used as both text and value
-  async metricFindQuery(dql: string, options?: { variable?: { name: string }; range?: any }): Promise<Array<{ text: string; value: string | number }>> {
+  // metricFindQuery powers dashboard variable queries. Frame reduction rules:
+  //   - field named `text` + field named `value` (case-insensitive) → pair
+  //     them.
+  //   - exactly one non-time field → each row becomes { text, value: text }.
+  //   - several fields → first non-time field used as both text and value.
+  // The reserved `time` field is always skipped so a timeseries result also
+  // works as a variable source.
+  async metricFindQuery(
+    dql: string,
+    options?: { variable?: { name: string }; range?: TimeRange }
+  ): Promise<MetricFindValue[]> {
     if (!dql || !dql.trim()) {
       return [];
     }
     const refId = `metric-find-${options?.variable?.name ?? 'q'}`;
     const interpolated = getTemplateSrv().replace(dql, undefined, 'csv');
-    const result = await this.query({
-      targets: [{ refId, dqlQuery: interpolated } as DqlQuery],
-      range: options?.range,
-      requestId: refId,
-    } as any).toPromise();
 
-    const frames = (result as any)?.data ?? [];
+    const response = await firstValueFrom(
+      this.query({
+        targets: [{ refId, dqlQuery: interpolated } as DqlQuery],
+        range: options?.range,
+        requestId: refId,
+        timezone: 'utc',
+        interval: '1m',
+        intervalMs: 60_000,
+        startTime: Date.now(),
+        scopedVars: {},
+      } as any)
+    );
+
+    const frames = (response as any)?.data ?? [];
     if (!frames.length) {
       return [];
     }
     const frame = frames[0];
-    const fields = frame.fields ?? [];
-    if (!fields.length) {
+    const allFields = frame.fields ?? [];
+    if (!allFields.length) {
+      return [];
+    }
+
+    // Drop the time column — variable queries are scalar, time isn't useful.
+    const nonTime = allFields.filter((f: any) => (f.name ?? '').toLowerCase() !== 'time');
+    if (!nonTime.length) {
       return [];
     }
 
     const fieldByName = (name: string) =>
-      fields.find((f: any) => (f.name ?? '').toLowerCase() === name.toLowerCase());
-    const textField = fieldByName('text') ?? fields[0];
+      nonTime.find((f: any) => (f.name ?? '').toLowerCase() === name.toLowerCase());
+
+    const textField = fieldByName('text') ?? nonTime[0];
     const valueField = fieldByName('value') ?? textField;
     const len = textField.values?.length ?? 0;
 
-    const out: Array<{ text: string; value: string | number }> = [];
+    const cellAt = (field: any, i: number) =>
+      field.values?.get ? field.values.get(i) : field.values?.[i];
+
+    const seen = new Set<string>();
+    const out: MetricFindValue[] = [];
     for (let i = 0; i < len; i++) {
-      const t = String(textField.values.get ? textField.values.get(i) : textField.values[i]);
-      const vRaw = valueField.values.get ? valueField.values.get(i) : valueField.values[i];
-      const v = typeof vRaw === 'number' ? vRaw : String(vRaw ?? t);
-      out.push({ text: t, value: v });
+      const t = cellAt(textField, i);
+      if (t == null || t === '') {
+        continue;
+      }
+      const text = String(t);
+      const vRaw = cellAt(valueField, i);
+      const value = typeof vRaw === 'number' ? vRaw : String(vRaw ?? text);
+      const key = `${text}|${value}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      out.push({ text, value });
     }
     return out;
   }
