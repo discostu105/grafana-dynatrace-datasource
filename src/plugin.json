@@ -25,11 +25,7 @@
       { "name": "Issues", "url": "https://github.com/discostu105/grafana-dynatrace-datasource/issues" },
       { "name": "DQL reference", "url": "https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language" }
     ],
-    "screenshots": [
-      { "name": "Energy overview", "path": "img/screenshot-energy.png" },
-      { "name": "Climate environment", "path": "img/screenshot-climate.png" },
-      { "name": "Miniserver health", "path": "img/screenshot-miniserver.png" }
-    ],
+    "screenshots": [],
     "version": "%VERSION%",
     "updated": "%TODAY%"
   },

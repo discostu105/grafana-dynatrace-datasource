@@ -62,16 +62,14 @@ timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}
 | filter $__timeFilter(timestamp)
 ```
 
-**Table** — top consumers right now:
+**Table** — top hosts by current CPU:
 
 ```dql
-timeseries val = avg(loxone.control.value),
-  filter: { control.category == "Energie" AND state.name == "actual" AND unit == "kW" AND control.type == "Meter" },
-  by: { control.name }
-| fieldsAdd current_kW = arrayLast(val)
-| filter isNotNull(current_kW) AND current_kW > 0
-| fields control.name, current_kW
-| sort current_kW desc
+timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}
+| fieldsAdd current = arrayLast(cpu)
+| filter isNotNull(current)
+| fields dt.smartscape.host, current
+| sort current desc
 ```
 
 **Variable query** — list of host names for a dashboard dropdown:
@@ -96,17 +94,6 @@ smartscapeNodes "HOST"
 | `$__timeFilter()`             | same, with `field=timestamp`                                           |
 
 Expansion runs server-side, so alert rules get the same substitutions as panels.
-
-## Bundled dashboards
-
-Four ready-to-use Grafana dashboards translated from the upstream [DynaLox](https://github.com/discostu105/DynaLox) Dynatrace documents live in [`src/dashboards/`](src/dashboards/):
-
-- DynaLox – Energy overview
-- DynaLox – Climate & environment
-- DynaLox – Lighting controls
-- DynaLox – Miniserver health
-
-They reference `${DS_DYNATRACEGRAIL}` so they import cleanly into any installation. Regenerate with [`scripts/convert_dynalox.py`](scripts/convert_dynalox.py) when the upstream changes.
 
 ## Build
 

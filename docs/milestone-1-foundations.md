@@ -18,7 +18,6 @@ prototype into something safe to point at a production tenant.
 
 - Logs / traces / annotations / alerting (Milestone 2)
 - Monaco editor, autocomplete, visual builder (Milestone 3)
-- Bundled dashboards (Milestone 2)
 
 ## Requirements
 
