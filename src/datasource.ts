@@ -15,10 +15,11 @@ import {
   TimeRange,
 } from '@grafana/data';
 import { DataSourceWithBackend, getBackendSrv, getTemplateSrv } from '@grafana/runtime';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom, map } from 'rxjs';
 
 import { AdhocFilter, DqlQuery, DqlDataSourceOptions, DEFAULT_QUERY } from './types';
 import { GrailAutocompleteResponse } from './dql/language';
+import { applyDerivedFields } from './derivedFields';
 
 // Curated tag keys we always expose for the ad-hoc filter UI. The Loxone
 // tenant we've seen in practice carries control.name / control.category /
@@ -59,12 +60,31 @@ export class DataSource
   extends DataSourceWithBackend<DqlQuery, DqlDataSourceOptions>
   implements DataSourceWithSupplementaryQueriesSupport<DqlQuery>, DataSourceWithLogsContextSupport<DqlQuery>
 {
+  private readonly derivedFields?: DqlDataSourceOptions['derivedFields'];
+
   constructor(instanceSettings: DataSourceInstanceSettings<DqlDataSourceOptions>) {
     super(instanceSettings);
+    this.derivedFields = instanceSettings.jsonData?.derivedFields;
   }
 
   getDefaultQuery() {
     return DEFAULT_QUERY;
+  }
+
+  // query is overridden so the response stream can be post-processed —
+  // currently for derived-field enhancement on log frames (regex matches
+  // on the body → clickable button column with DataLinks).
+  query(request: DataQueryRequest<DqlQuery>): Observable<DataQueryResponse> {
+    const stream = super.query(request);
+    if (!this.derivedFields?.length) {
+      return stream;
+    }
+    return stream.pipe(
+      map((resp) => ({
+        ...resp,
+        data: applyDerivedFields(resp.data ?? [], this.derivedFields),
+      }))
+    );
   }
 
   // applyTemplateVariables runs once per query on the way to the backend:

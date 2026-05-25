@@ -38,6 +38,29 @@ export interface DqlDataSourceOptions extends DataSourceJsonData {
   // Go duration string used when the panel has no time range (variable
   // queries, alerting probes). Defaults to "1h" on the backend.
   defaultTimeframe?: string;
+  // Derived field rules — regex over log body → clickable URL link.
+  // Each rule produces a new field on the logs frame whose values are
+  // the first regex capture group; Grafana's logs panel renders them as
+  // buttons that open the URL with ${__value.raw} substituted.
+  derivedFields?: DerivedField[];
+}
+
+export interface DerivedField {
+  // Name of the new field added to the logs frame. Shown as the button
+  // label in the logs detail view (overridden by `urlDisplayLabel` if set).
+  name: string;
+  // Regex applied against each row's body. The first capture group is
+  // the extracted value. Patterns without a capture group fall back to
+  // the whole match.
+  matcherRegex: string;
+  // URL template. ${__value.raw} is replaced with the captured value;
+  // standard Grafana template vars also work.
+  url: string;
+  // Optional button label override. Defaults to `name`.
+  urlDisplayLabel?: string;
+  // Optional Grafana datasource UID — when set, the link becomes an
+  // "internal" link that opens Explore against that datasource.
+  datasourceUid?: string;
 }
 
 export interface DqlSecureJsonData {

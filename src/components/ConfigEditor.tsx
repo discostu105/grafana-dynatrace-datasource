@@ -1,8 +1,9 @@
 import React, { ChangeEvent } from 'react';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
 import { InlineField, Input, SecretInput } from '@grafana/ui';
-import { DqlDataSourceOptions, DqlSecureJsonData } from '../types';
+import { DerivedField, DqlDataSourceOptions, DqlSecureJsonData } from '../types';
 import { SELECTORS } from '../selectors';
+import { DerivedFieldsEditor } from './DerivedFieldsEditor';
 
 type Props = DataSourcePluginOptionsEditorProps<DqlDataSourceOptions, DqlSecureJsonData>;
 
@@ -92,6 +93,12 @@ export function ConfigEditor({ options, onOptionsChange }: Props) {
           onChange={onDefaultTimeframeChange}
         />
       </InlineField>
+      <DerivedFieldsEditor
+        value={jsonData.derivedFields}
+        onChange={(rules: DerivedField[]) =>
+          updateJson({ derivedFields: rules.filter((r) => r.name && r.matcherRegex && r.url) })
+        }
+      />
     </div>
   );
 }
