@@ -106,30 +106,16 @@ alert rules, and shippable with at least one out-of-the-box dashboard.
   `$__adhocFilters` that expands to a `| filter` clause; queries that
   don't reference the macro are unaffected.
 
-### R2.6 — Bundled dashboards
-
-- Ship at least two dashboards in `src/dashboards/` and reference them
-  from `plugin.json` `includes`:
-  - **Host overview** — CPU, memory, disk, network for hosts selected by a
-    template variable.
-  - **Log explorer** — log volume histogram + logs panel + severity
-    breakdown, filterable by service and host.
-- Dashboards must use the `${DS_DYNATRACEGRAIL}` data source variable so
-  they import cleanly into any installation.
-- A screenshot of each dashboard goes into `src/img/` and the README.
-
-### R2.7 — Provisioning
+### R2.6 — Provisioning
 
 - Expand `provisioning/` with a complete example:
   - `provisioning/datasources/dynatrace.yaml` with `secureJsonData`.
-  - `provisioning/dashboards/dashboards.yaml` referencing the two bundled
-    dashboards.
 - The `docker compose up` flow should bring up Grafana with the data
   source already configured (token sourced from a `.env` file the user
   creates), so a contributor can go from clone to working panel in one
   command.
 
-### R2.8 — End-to-end tests
+### R2.7 — End-to-end tests
 
 - Extend `tests/` with Playwright specs covering:
   - Save & test on a valid / invalid token.
@@ -148,6 +134,4 @@ alert rules, and shippable with at least one out-of-the-box dashboard.
   and label filters.
 - A dashboard variable populated from `summarize by:{dt.smartscape.host}`
   works in a panel.
-- The two bundled dashboards import cleanly into a fresh Grafana and show
-  data within 30 seconds of pointing at a live tenant.
 - All e2e specs green against the latest Grafana in CI.
