@@ -56,7 +56,12 @@ func recordsToTraceFrame(refID string, records []map[string]interface{}) ([]*dat
 	startTimes := make([]float64, n)
 	durations := make([]float64, n)
 	tags := make([]string, n)
-	statusCodes := make([]string, n)
+	serviceTags := make([]string, n)
+	logsField := make([]string, n)
+	referencesField := make([]string, n)
+	kinds := make([]string, n)
+	statusCodes := make([]int64, n)
+	statusMessages := make([]string, n)
 
 	for i, rec := range records {
 		traceIDs[i] = stringField(rec, "trace.id")
@@ -67,7 +72,15 @@ func recordsToTraceFrame(refID string, records []map[string]interface{}) ([]*dat
 		startTimes[i] = parseSpanTimeMs(rec, "start_time")
 		durations[i] = computeDurationMs(rec)
 		tags[i] = encodeTraceTags(rec)
-		statusCodes[i] = mapSpanStatus(stringField(rec, "dt.failure_detection.verdict"), stringField(rec, "status.code"))
+		// Grafana's traces panel expects these as parallel arrays even when
+		// empty — undefined columns make the span-detail view explode on
+		// JSON.parse / .toLowerCase / .reduce calls.
+		serviceTags[i] = "[]"
+		logsField[i] = "[]"
+		referencesField[i] = "[]"
+		kinds[i] = normaliseSpanKind(stringField(rec, "span.kind"))
+		statusCodes[i] = mapStatusCode(stringField(rec, "dt.failure_detection.verdict"), stringField(rec, "status.code"))
+		statusMessages[i] = ""
 	}
 
 	frame := data.NewFrame(refID,
@@ -76,13 +89,51 @@ func recordsToTraceFrame(refID string, records []map[string]interface{}) ([]*dat
 		data.NewField("parentSpanID", nil, parentSpanIDs),
 		data.NewField("operationName", nil, operationNames),
 		data.NewField("serviceName", nil, serviceNames),
+		data.NewField("kind", nil, kinds),
+		data.NewField("statusCode", nil, statusCodes),
+		data.NewField("statusMessage", nil, statusMessages),
 		data.NewField("startTime", nil, startTimes),
 		data.NewField("duration", nil, durations),
+		data.NewField("serviceTags", nil, serviceTags),
 		data.NewField("tags", nil, tags),
-		data.NewField("statusCode", nil, statusCodes),
+		data.NewField("logs", nil, logsField),
+		data.NewField("references", nil, referencesField),
 	)
 	setTraceVis(frame)
 	return []*data.Frame{frame}, nil
+}
+
+// normaliseSpanKind maps DQL span.kind values onto the lowercase enum
+// Grafana's traces panel calls .toLowerCase() on. Empty input becomes
+// "unspecified" — never undefined — so the icon lookup is always safe.
+func normaliseSpanKind(s string) string {
+	if s == "" {
+		return "unspecified"
+	}
+	return strings.ToLower(s)
+}
+
+// mapStatusCode follows the OTel numeric status code convention:
+//
+//	0 = unset (default; rendered as no status in the panel)
+//	1 = ok
+//	2 = error
+//
+// Grafana's traces panel treats this as a number, not a string.
+func mapStatusCode(dtVerdict, otelStatus string) int64 {
+	switch strings.ToLower(dtVerdict) {
+	case "success", "ok":
+		return 1
+	case "failure", "error", "failed":
+		return 2
+	}
+	switch strings.ToLower(otelStatus) {
+	case "ok", "1":
+		return 1
+	case "error", "2":
+		return 2
+	}
+	return 0
 }
 
 func setTraceVis(f *data.Frame) {
@@ -137,24 +188,6 @@ func parseTimeNanos(rec map[string]interface{}, key string) time.Time {
 		return t
 	}
 	return time.Time{}
-}
-
-// mapSpanStatus normalises Dynatrace's failure-detection verdict (or an
-// explicit OTel status.code) onto Grafana's traces panel status codes.
-func mapSpanStatus(dtVerdict, otelStatus string) string {
-	switch strings.ToLower(dtVerdict) {
-	case "success", "ok":
-		return "ok"
-	case "failure", "error", "failed":
-		return "error"
-	}
-	switch strings.ToLower(otelStatus) {
-	case "ok", "0":
-		return "ok"
-	case "error", "2":
-		return "error"
-	}
-	return ""
 }
 
 // encodeTraceTags collects all record fields that aren't already mapped to

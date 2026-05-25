@@ -46,15 +46,29 @@ func TestRecordsToTraceFrame_Shape(t *testing.T) {
 	for _, fld := range f.Fields {
 		names = append(names, fld.Name)
 	}
-	expected := []string{"traceID", "spanID", "parentSpanID", "operationName", "serviceName", "startTime", "duration", "tags", "statusCode"}
+	expected := []string{
+		"traceID", "spanID", "parentSpanID", "operationName", "serviceName",
+		"kind", "statusCode", "statusMessage",
+		"startTime", "duration",
+		"serviceTags", "tags", "logs", "references",
+	}
 	if strings.Join(names, ",") != strings.Join(expected, ",") {
 		t.Errorf("field names = %v, want %v", names, expected)
 	}
 }
 
+func fieldByName(f *data.Frame, name string) *data.Field {
+	for _, fld := range f.Fields {
+		if fld.Name == name {
+			return fld
+		}
+	}
+	return nil
+}
+
 func TestRecordsToTraceFrame_DurationInMilliseconds(t *testing.T) {
 	frames, _ := recordsToTraceFrame("A", []map[string]interface{}{sampleSpan()})
-	dur := frames[0].Fields[6].At(0).(float64)
+	dur := fieldByName(frames[0], "duration").At(0).(float64)
 	// Span is 123000 ns → 0.123 ms.
 	if dur < 0.122 || dur > 0.124 {
 		t.Errorf("duration = %v, want ~0.123 ms", dur)
@@ -67,18 +81,52 @@ func TestRecordsToTraceFrame_StatusFromVerdict(t *testing.T) {
 	bad["dt.failure_detection.verdict"] = "failure"
 
 	frames, _ := recordsToTraceFrame("A", []map[string]interface{}{good, bad})
-	status := frames[0].Fields[8]
-	if status.At(0) != "ok" {
-		t.Errorf("good verdict → ok, got %v", status.At(0))
+	status := fieldByName(frames[0], "statusCode")
+	if status.At(0) != int64(1) {
+		t.Errorf("good verdict → 1 (ok), got %v", status.At(0))
 	}
-	if status.At(1) != "error" {
-		t.Errorf("failure verdict → error, got %v", status.At(1))
+	if status.At(1) != int64(2) {
+		t.Errorf("failure verdict → 2 (error), got %v", status.At(1))
+	}
+}
+
+func TestRecordsToTraceFrame_KindLowercase(t *testing.T) {
+	rec := sampleSpan()
+	rec["span.kind"] = "SERVER"
+	frames, _ := recordsToTraceFrame("A", []map[string]interface{}{rec})
+	kind := fieldByName(frames[0], "kind").At(0).(string)
+	if kind != "server" {
+		t.Errorf("kind = %q, want lowercase 'server'", kind)
+	}
+}
+
+func TestRecordsToTraceFrame_KindDefaultsToUnspecified(t *testing.T) {
+	rec := sampleSpan()
+	delete(rec, "span.kind")
+	frames, _ := recordsToTraceFrame("A", []map[string]interface{}{rec})
+	kind := fieldByName(frames[0], "kind").At(0).(string)
+	if kind != "unspecified" {
+		t.Errorf("missing span.kind should default to 'unspecified', got %q", kind)
+	}
+}
+
+func TestRecordsToTraceFrame_ServiceTagsLogsReferencesPresent(t *testing.T) {
+	frames, _ := recordsToTraceFrame("A", []map[string]interface{}{sampleSpan()})
+	for _, name := range []string{"serviceTags", "logs", "references"} {
+		fld := fieldByName(frames[0], name)
+		if fld == nil {
+			t.Errorf("missing field %q", name)
+			continue
+		}
+		if v, ok := fld.At(0).(string); !ok || v != "[]" {
+			t.Errorf("%s should be \"[]\" string, got %#v", name, fld.At(0))
+		}
 	}
 }
 
 func TestRecordsToTraceFrame_TagsJSON(t *testing.T) {
 	frames, _ := recordsToTraceFrame("A", []map[string]interface{}{sampleSpan()})
-	tagsRaw := frames[0].Fields[7].At(0).(string)
+	tagsRaw := fieldByName(frames[0], "tags").At(0).(string)
 
 	var tags []map[string]interface{}
 	if err := json.Unmarshal([]byte(tagsRaw), &tags); err != nil {
@@ -133,7 +181,7 @@ func TestRecordsToTraceFrame_DurationFromTimestampsWhenStringUnparseable(t *test
 	rec := sampleSpan()
 	rec["duration"] = "not a number"
 	frames, _ := recordsToTraceFrame("A", []map[string]interface{}{rec})
-	dur := frames[0].Fields[6].At(0).(float64)
+	dur := fieldByName(frames[0], "duration").At(0).(float64)
 	if dur < 0.122 || dur > 0.124 {
 		t.Errorf("duration fallback from timestamps wrong: %v", dur)
 	}
