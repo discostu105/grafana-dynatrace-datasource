@@ -34,8 +34,8 @@ const (
 	// pluginVersion is mirrored from package.json / plugin.json. Bump both
 	// together on release; surfaced in the User-Agent so Dynatrace can
 	// correlate plugin traffic.
-	pluginVersion = "1.12.0"
-	userAgent     = "grafana-dql-datasource/" + pluginVersion
+	pluginVersion = "1.12.1"
+	userAgent     = "grafana-dynatrace-datasource/" + pluginVersion
 	// healthProbeQuery is a syntactically minimal DQL string used by
 	// CheckHealth's Verify probe. It exercises auth + network without
 	// consuming any Grail scan budget.

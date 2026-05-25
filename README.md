@@ -1,4 +1,4 @@
-# grafana-dql-datasource
+# grafana-dynatrace-datasource
 
 Grafana data source for [Dynatrace Grail / DQL](https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language).
 

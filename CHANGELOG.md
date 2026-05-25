@@ -6,6 +6,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-05-25
+
+### Fixed
+
+- Visual Query Builder: produce DQL that actually parses. The 1.12.0
+  generator emitted `summarize ... by:{bin(timestamp, …)}` — that's
+  SQL-flavoured, not DQL. Time-bucketed series now use `makeTimeseries`
+  (events/logs/spans) or `timeseries` (metrics), with `bin()` removed
+  from the `by:` clauses.
+- Source list aligned with DQL data objects: drop `metric.series` /
+  `dt.entity.*` (deprecated), add `bizevents`, `dt.davis.problems`,
+  `dt.davis.events`, and `metrics` (which switches the generator to
+  the `timeseries` command).
+- Operators: rename `matches` → `matchesValue` to match DQL; add hint
+  that it's for array fields / wildcard patterns, not substring search
+  (use `contains` for that).
+- Aggregation: add `percentile` (auto-includes `, 95, rollup: avg` for
+  metrics, since percentile/median silently return empty without rollup).
+- Filters joined with lowercase `and` (DQL convention).
+
 ## [1.12.0] - 2026-05-25
 
 ### Added
