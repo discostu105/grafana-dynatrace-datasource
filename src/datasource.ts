@@ -21,7 +21,7 @@ import { AdhocFilter, DqlQuery, DqlDataSourceOptions, DEFAULT_QUERY } from './ty
 import { GrailAutocompleteResponse } from './dql/language';
 import { applyDerivedFields } from './derivedFields';
 import { buildLogContextDQL, buildLogsVolumeQuery } from './logsHooks';
-import { decodeTraceFrames } from './tracesPostprocess';
+import { decodeTraceFrames, enhanceTraceListFrames } from './tracesPostprocess';
 
 // Curated tag keys we always expose for the ad-hoc filter UI. The Loxone
 // tenant we've seen in practice carries control.name / control.category /
@@ -80,6 +80,15 @@ export class DataSource
   //    JS arrays so Grafana's traces panel doesn't choke on
   //    `K.reduce is not a function`.
   query(request: DataQueryRequest<DqlQuery>): Observable<DataQueryResponse> {
+    // Index of the per-refid query model so we know what queryType each
+    // returned frame was asked for — used by the trace-list enhancer to
+    // attach clickable trace IDs to rollup table frames.
+    const queryByRefId = new Map<string, DqlQuery>();
+    for (const t of request.targets ?? []) {
+      if (t?.refId) {
+        queryByRefId.set(t.refId, t);
+      }
+    }
     return super.query(request).pipe(
       map((resp) => {
         let data = resp.data ?? [];
@@ -87,6 +96,7 @@ export class DataSource
           data = applyDerivedFields(data, this.derivedFields);
         }
         data = decodeTraceFrames(data);
+        data = enhanceTraceListFrames(data, this.uid, queryByRefId);
         return { ...resp, data };
       })
     );

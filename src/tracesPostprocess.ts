@@ -1,16 +1,23 @@
 // Post-process trace frames so Grafana's traces panel doesn't choke.
 //
-// The backend emits these columns as JSON-encoded strings (cheap wire
-// format): `tags`, `serviceTags`, `logs`, `references`. The panel calls
-// `.map()` / `.reduce()` / `.forEach()` on them directly, so they need
-// to be real JS arrays by the time the frame reaches the renderer.
+// Three things happen here:
 //
-// We mutate the existing frame in place: field.values gets replaced
-// with the parsed array, field.type swaps to `other`. That's simpler
-// and more robust than reconstructing the frame via MutableDataFrame
-// (which has its own opinions about how to interpret the input).
+//   1. For trace-detail frames (Meta.PreferredVisualisation=trace, has
+//      span.id-bearing rows): decode the JSON-encoded array columns
+//      `tags` / `serviceTags` / `logs` / `references` into real JS
+//      arrays. The panel calls .map / .reduce / .forEach on them.
+//
+//   2. For trace-list frames (queryType=traces but rollup shape — no
+//      span.id, has trace.id): rename trace.id → traceID and attach
+//      an internal DataLink on the traceID column so clicking a row
+//      opens the trace-detail view in a new Explore pane.
+//
+// We mutate the existing frame in place: field.values gets replaced,
+// field.name/type/config updated. That's simpler and more robust than
+// reconstructing the frame via MutableDataFrame.
 
-import { DataFrame, Field, FieldType } from '@grafana/data';
+import { DataFrame, DataLink, Field, FieldType } from '@grafana/data';
+import type { DqlQuery } from './types';
 
 const TRACE_VIS = 'trace';
 const ARRAY_FIELDS = new Set(['tags', 'serviceTags', 'logs', 'references']);
@@ -26,6 +33,66 @@ export function decodeTraceFrames(frames: DataFrame[]): DataFrame[] {
     decodeArrayFieldsInPlace(frame);
   }
   return frames;
+}
+
+// enhanceTraceListFrames is for frames from queryType=traces queries that
+// came back as plain tables (no span.id in the records → rollup shape).
+// We rename trace.id → traceID and attach a Grafana internal DataLink so
+// each row's trace ID is clickable, opening Explore with a span-detail
+// query against the same datasource.
+//
+// Caller supplies `datasourceUid` because internal links need it baked
+// into the link config (the backend doesn't know its own uid).
+export function enhanceTraceListFrames(
+  frames: DataFrame[],
+  datasourceUid: string,
+  queryByRefId: Map<string, DqlQuery>
+): DataFrame[] {
+  if (!frames?.length) {
+    return frames;
+  }
+  for (const frame of frames) {
+    const q = queryByRefId.get(frame.refId ?? '');
+    if (q?.queryType !== 'traces') {
+      continue;
+    }
+    if (frame.meta?.preferredVisualisationType === TRACE_VIS) {
+      // already a detail frame — skip
+      continue;
+    }
+    enhanceListFrameInPlace(frame, datasourceUid);
+  }
+  return frames;
+}
+
+function enhanceListFrameInPlace(frame: DataFrame, datasourceUid: string): void {
+  const f = frame.fields.find((x) => x.name === 'trace.id' || x.name === 'traceID');
+  if (!f) {
+    return;
+  }
+  // Standardise to traceID (the column name Grafana's table panel
+  // gives special treatment to).
+  (f as unknown as { name: string }).name = 'traceID';
+  const link: DataLink = {
+    title: 'View trace',
+    url: '',
+    targetBlank: false,
+  };
+  // Internal-link variant — opens Explore against this datasource with
+  // a span-detail query. Grafana resolves ${__value.raw} to the cell
+  // value at click time.
+  (link as unknown as { internal?: unknown }).internal = {
+    datasourceUid,
+    query: {
+      dqlQuery: 'fetch spans | filter trace.id == "${__value.raw}" | sort start_time',
+      queryType: 'traces',
+    },
+  };
+  if (!f.config) {
+    (f as unknown as { config: { links?: DataLink[] } }).config = { links: [link] };
+  } else {
+    f.config.links = [...(f.config.links ?? []), link];
+  }
 }
 
 function decodeArrayFieldsInPlace(frame: DataFrame): void {
