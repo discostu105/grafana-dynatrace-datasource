@@ -12,6 +12,8 @@ import (
 
 	"github.com/discostu105/dynatracegrail/pkg/dynatrace"
 	"github.com/discostu105/dynatracegrail/pkg/macros"
+	dtquery "github.com/dynatrace-oss/dtctl/sdk/api/query"
+	"github.com/dynatrace-oss/dtctl/sdk/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
@@ -28,6 +30,15 @@ var (
 const (
 	defaultQueryTimeout = 30 * time.Second
 	defaultTimeframe    = time.Hour
+	// pluginVersion is mirrored from package.json / plugin.json. Bump both
+	// together on release; surfaced in the User-Agent so Dynatrace can
+	// correlate plugin traffic.
+	pluginVersion = "1.0.0"
+	userAgent     = "grafana-dql-datasource/" + pluginVersion
+	// healthProbeQuery is a syntactically minimal DQL string used by
+	// CheckHealth's Verify probe. It exercises auth + network without
+	// consuming any Grail scan budget.
+	healthProbeQuery = "fetch logs | limit 1"
 )
 
 type Datasource struct {
@@ -66,37 +77,26 @@ func NewDatasource(_ context.Context, s backend.DataSourceInstanceSettings) (ins
 		}
 	}
 
-	if err := validateTenantURL(cfg.TenantURL); err != nil {
+	if err := dynatrace.ValidateTenantURL(cfg.TenantURL); err != nil {
 		ds.cfgErr = err
 		return ds, nil
 	}
 	token := s.DecryptedSecureJSONData["apiToken"]
-	if token == "" {
-		ds.cfgErr = errors.New("API token is empty — set it in the data source config page")
+	if err := dynatrace.ValidateToken(token); err != nil {
+		ds.cfgErr = err
 		return ds, nil
 	}
 
-	c, err := dynatrace.New(cfg.TenantURL, token)
+	c, err := dynatrace.NewWith(cfg.TenantURL, token, dynatrace.Options{
+		UserAgent: userAgent,
+		Logger:    sdkLogger{},
+	})
 	if err != nil {
 		ds.cfgErr = err
 		return ds, nil
 	}
 	ds.dt = c
 	return ds, nil
-}
-
-func validateTenantURL(raw string) error {
-	if raw == "" {
-		return errors.New("tenant URL is empty — set it in the data source config page")
-	}
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.Host == "" {
-		return fmt.Errorf("tenant URL must look like https://<env>.apps.dynatrace.com, got %q", raw)
-	}
-	if !strings.Contains(u.Host, ".dynatrace.com") {
-		return fmt.Errorf("tenant URL host %q does not look like a Dynatrace endpoint", u.Host)
-	}
-	return nil
 }
 
 func (d *Datasource) Dispose() {}
@@ -203,6 +203,7 @@ func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.Dat
 	}
 	applyLegendFormat(frames, qm.LegendFormat)
 	inferDecimals(frames)
+	attachNotifications(frames, dqlResp.GetNotifications())
 	log.DefaultLogger.Info("dql query ok", "refID", q.RefID, "queryType", qm.QueryType, "rows", len(records), "frames", len(frames), "duration", time.Since(start))
 	return backend.DataResponse{Frames: frames}
 }
@@ -222,7 +223,7 @@ func (d *Datasource) resolveTimeRange(q backend.DataQuery) (time.Time, time.Time
 //   - tenant URL missing/malformed
 //   - token missing
 //   - HTTP transport failure (DNS, TLS, connection refused) — host included
-//   - DQL execute returned a Grail error — body surfaced
+//   - DQL Verify rejected by the API — body surfaced
 func (d *Datasource) CheckHealth(ctx context.Context, _ *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	if d.cfgErr != nil {
 		return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: d.cfgErr.Error()}, nil
@@ -230,30 +231,37 @@ func (d *Datasource) CheckHealth(ctx context.Context, _ *backend.CheckHealthRequ
 	cctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	if _, err := d.dt.Query(cctx, "data record(x = 1)", time.Time{}, time.Time{}); err != nil {
-		host := "tenant"
-		if u, perr := url.Parse(d.cfg.TenantURL); perr == nil {
-			host = u.Host
-		}
-		msg := classifyHealthError(host, err)
-		return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: msg}, nil
+	if _, err := d.dt.Verify(cctx, healthProbeQuery); err != nil {
+		host := hostOf(d.cfg.TenantURL)
+		return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: classifyHealthError(host, err)}, nil
 	}
 	return &backend.CheckHealthResult{Status: backend.HealthStatusOk, Message: fmt.Sprintf("Successfully connected to %s", hostOf(d.cfg.TenantURL))}, nil
 }
 
+// classifyHealthError turns a Verify failure into a user-actionable message.
+// Prefers typed httpclient sentinels for status-based classification; falls
+// back to substring matching on transport errors (DNS, TLS) which are not
+// represented as typed errors by the SDK.
 func classifyHealthError(host string, err error) string {
+	switch {
+	case errors.Is(err, httpclient.ErrUnauthorized):
+		return fmt.Sprintf("Authentication rejected by %s: %v", host, err)
+	case errors.Is(err, httpclient.ErrForbidden):
+		return fmt.Sprintf("Token lacks required scopes (need storage:logs:read / storage:metrics:read or similar): %v", err)
+	case errors.Is(err, httpclient.ErrRateLimited):
+		return fmt.Sprintf("Rate limited by %s: %v", host, err)
+	case errors.Is(err, httpclient.ErrServerError):
+		return fmt.Sprintf("Server error from %s: %v", host, err)
+	}
+
 	es := err.Error()
 	switch {
 	case strings.Contains(es, "no such host"), strings.Contains(es, "dial"), strings.Contains(es, "connection refused"):
 		return fmt.Sprintf("Cannot reach %s: %v", host, err)
 	case strings.Contains(es, "x509"), strings.Contains(es, "tls"):
 		return fmt.Sprintf("TLS error talking to %s: %v", host, err)
-	case strings.Contains(es, "401"), strings.Contains(es, "Unauthorized"), strings.Contains(es, "authentication"):
-		return fmt.Sprintf("Authentication rejected by %s: %v", host, err)
-	case strings.Contains(es, "403"), strings.Contains(es, "Forbidden"):
-		return fmt.Sprintf("Token lacks required scopes (need storage:metrics:read or similar): %v", err)
 	default:
-		return fmt.Sprintf("DQL execute failed on %s: %v", host, err)
+		return fmt.Sprintf("DQL verify failed on %s: %v", host, err)
 	}
 }
 
@@ -262,6 +270,50 @@ func hostOf(raw string) string {
 		return u.Host
 	}
 	return raw
+}
+
+// attachNotifications surfaces Grail notifications (sampling notes, scan-limit
+// warnings, deprecations) as Grafana notices on the first frame so panels can
+// display them in the inspector. Attaching to one frame avoids per-series
+// duplication in multi-series responses.
+func attachNotifications(frames []*data.Frame, notifications []dtquery.Notification) {
+	if len(frames) == 0 || len(notifications) == 0 {
+		return
+	}
+	notices := make([]data.Notice, 0, len(notifications))
+	for _, n := range notifications {
+		text := n.Message
+		if text == "" {
+			continue
+		}
+		notices = append(notices, data.Notice{
+			Severity: noticeSeverity(n.Severity),
+			Text:     text,
+		})
+	}
+	if len(notices) == 0 {
+		return
+	}
+	frames[0].AppendNotices(notices...)
+}
+
+func noticeSeverity(s string) data.NoticeSeverity {
+	switch strings.ToUpper(s) {
+	case "WARN", "WARNING":
+		return data.NoticeSeverityWarning
+	case "ERROR", "SEVERE":
+		return data.NoticeSeverityError
+	default:
+		return data.NoticeSeverityInfo
+	}
+}
+
+// sdkLogger adapts dtctl's httpclient.Logger interface onto Grafana's
+// backend logger. Used for retry / connection diagnostics.
+type sdkLogger struct{}
+
+func (sdkLogger) Debugf(format string, args ...interface{}) {
+	log.DefaultLogger.Debug(fmt.Sprintf(format, args...))
 }
 
 // logRawShape emits the key set and per-key value types for the first record,

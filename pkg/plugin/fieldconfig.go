@@ -57,7 +57,7 @@ func inferDecimals(frames []*data.Frame) {
 			if d < 0 {
 				continue
 			}
-			u16 := uint16(d)
+			u16 := uint16(d) //nolint:gosec // decimalsFor returns 0-4
 			fld.Config.Decimals = &u16
 		}
 	}
