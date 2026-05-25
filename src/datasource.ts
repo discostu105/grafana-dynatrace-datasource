@@ -1,6 +1,20 @@
-import { DataSourceInstanceSettings, MetricFindValue, ScopedVars, TimeRange } from '@grafana/data';
+import {
+  DataQueryRequest,
+  DataQueryResponse,
+  DataSourceInstanceSettings,
+  DataSourceWithLogsContextSupport,
+  DataSourceWithSupplementaryQueriesSupport,
+  LogRowContextOptions,
+  LogRowContextQueryDirection,
+  LogRowModel,
+  MetricFindValue,
+  ScopedVars,
+  SupplementaryQueryOptions,
+  SupplementaryQueryType,
+  TimeRange,
+} from '@grafana/data';
 import { DataSourceWithBackend, getBackendSrv, getTemplateSrv } from '@grafana/runtime';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 
 import { AdhocFilter, DqlQuery, DqlDataSourceOptions, DEFAULT_QUERY } from './types';
 
@@ -23,7 +37,12 @@ const CURATED_TAG_KEYS = [
   'k8s.namespace.name',
 ];
 
-export class DataSource extends DataSourceWithBackend<DqlQuery, DqlDataSourceOptions> {
+export class DataSource
+  extends DataSourceWithBackend<DqlQuery, DqlDataSourceOptions>
+  implements
+    DataSourceWithSupplementaryQueriesSupport<DqlQuery>,
+    DataSourceWithLogsContextSupport<DqlQuery>
+{
   constructor(instanceSettings: DataSourceInstanceSettings<DqlDataSourceOptions>) {
     super(instanceSettings);
   }
@@ -189,6 +208,105 @@ export class DataSource extends DataSourceWithBackend<DqlQuery, DqlDataSourceOpt
     return getBackendSrv().post(
       `/api/datasources/uid/${this.uid}/resources/autocomplete`,
       { query, position }
+    );
+  }
+
+  // ---- Log volume histogram (DataSourceWithSupplementaryQueriesSupport) ---
+  //
+  // Grafana asks the data source for a "supplementary" query alongside the
+  // main one when rendering the logs panel. Returning a LogsVolume query
+  // here drives the bar chart Grafana displays above the log lines, broken
+  // down by severity. Pattern matches grafana-clickhouse-datasource.
+
+  getSupportedSupplementaryQueryTypes(): SupplementaryQueryType[] {
+    return [SupplementaryQueryType.LogsVolume];
+  }
+
+  getSupplementaryQuery(
+    options: SupplementaryQueryOptions,
+    query: DqlQuery
+  ): DqlQuery | undefined {
+    if (options.type !== SupplementaryQueryType.LogsVolume) {
+      return undefined;
+    }
+    if (query.queryType !== 'logs' || !query.dqlQuery) {
+      return undefined;
+    }
+    // Wrap the user's logs query with a `summarize count(), by:{bin(timestamp,
+    // $__interval), severity}` so the result is a timeseries grouped by level.
+    // Backend's $__interval macro picks a sensible bucket size; we don't
+    // touch the original DQL beyond appending.
+    const wrapped = `${query.dqlQuery.trim()}
+| summarize count = count(), by:{interval = bin(timestamp, $__interval), severity = if(isNotNull(loglevel), loglevel, else: "unknown")}`;
+    return {
+      ...query,
+      refId: `${query.refId}-volume`,
+      dqlQuery: wrapped,
+      queryType: 'timeseries',
+    };
+  }
+
+  getDataProvider(
+    type: SupplementaryQueryType,
+    request: DataQueryRequest<DqlQuery>
+  ): Observable<DataQueryResponse> | undefined {
+    if (type !== SupplementaryQueryType.LogsVolume) {
+      return undefined;
+    }
+    const targets = request.targets
+      .map((t) => this.getSupplementaryQuery({ type }, t))
+      .filter((t): t is DqlQuery => !!t);
+    if (!targets.length) {
+      return undefined;
+    }
+    return this.query({ ...request, targets });
+  }
+
+  // ---- Log row context (DataSourceWithLogsContextSupport) ----------------
+
+  // showContextToggle hides the "show context" button when there's nothing
+  // to anchor against. We require at least one label on the row (otherwise
+  // the surrounding-lines query would be unfiltered and useless).
+  showContextToggle(row?: LogRowModel): boolean {
+    return !!row?.labels && Object.keys(row.labels).length > 0;
+  }
+
+  async getLogRowContext(
+    row: LogRowModel,
+    options?: LogRowContextOptions,
+    origQuery?: DqlQuery
+  ): Promise<DataQueryResponse> {
+    const limit = options?.limit ?? 50;
+    const direction =
+      options?.direction === LogRowContextQueryDirection.Forward ? 'asc' : 'desc';
+    const cmp = direction === 'asc' ? '>=' : '<=';
+    const labels = row.labels ?? {};
+    const selectorParts = Object.entries(labels)
+      .filter(([k]) => k && !['level', 'loglevel', 'severity'].includes(k))
+      .map(([k, v]) => `${k} == "${String(v).replace(/"/g, '\\"')}"`);
+    const labelFilter = selectorParts.length ? selectorParts.join(' AND ') : 'true';
+    const ts = row.timeEpochMs;
+    const dql =
+      `fetch logs | filter ${labelFilter} ` +
+      `| filter timestamp ${cmp} fromUnixMillis(${ts}) ` +
+      `| sort timestamp ${direction} | limit ${limit}`;
+
+    const refId = `${origQuery?.refId ?? 'A'}-ctx-${direction}`;
+    return firstValueFrom(
+      this.query({
+        targets: [{ refId, dqlQuery: dql, queryType: 'logs' } as DqlQuery],
+        requestId: refId,
+        timezone: 'utc',
+        interval: '1m',
+        intervalMs: 60_000,
+        startTime: Date.now(),
+        scopedVars: {},
+        range: {
+          from: { valueOf: () => ts - 60 * 60 * 1000 } as any,
+          to: { valueOf: () => ts + 60 * 60 * 1000 } as any,
+          raw: { from: '', to: '' } as any,
+        },
+      } as any)
     );
   }
 }
