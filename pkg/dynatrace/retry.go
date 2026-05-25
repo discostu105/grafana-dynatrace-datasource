@@ -115,6 +115,6 @@ func backoff(p RetryPolicy, attempt int) time.Duration {
 		d = p.MaxDelay
 	}
 	// ±20% jitter to avoid thundering-herd retries from concurrent panels.
-	jitter := time.Duration(float64(d) * (rand.Float64()*0.4 - 0.2))
+	jitter := time.Duration(float64(d) * (rand.Float64()*0.4 - 0.2)) //nolint:gosec // backoff jitter, not crypto
 	return d + jitter
 }

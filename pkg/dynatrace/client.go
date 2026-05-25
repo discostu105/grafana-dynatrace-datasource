@@ -1,20 +1,25 @@
 // Package dynatrace wraps the dtctl SDK with the narrow surface this plugin
-// needs: client construction from explicit credentials, DQL execution
-// (with retry + concurrency limiting), and Grail's autocomplete endpoint.
+// needs: tenant URL + token validation, client construction, DQL execution
+// (with retry + concurrency limiting), DQL verification, and Grail's
+// autocomplete endpoint.
 package dynatrace
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/dynatrace-oss/dtctl/sdk/api/query"
+	"github.com/dynatrace-oss/dtctl/sdk/auth"
 	"github.com/dynatrace-oss/dtctl/sdk/httpclient"
+	dturls "github.com/dynatrace-oss/dtctl/sdk/urls"
 )
 
 // DefaultConcurrency caps how many Grail calls one Client makes in
@@ -33,12 +38,14 @@ type Client struct {
 
 // Options tunes a Client at construction time.
 type Options struct {
-	Concurrency int           // max in-flight Grail calls per client; 0 → DefaultConcurrency
-	HTTPTimeout time.Duration // outbound HTTP timeout for non-SDK calls (Autocomplete); 0 → 15s
+	Concurrency int               // max in-flight Grail calls per client; 0 → DefaultConcurrency
+	HTTPTimeout time.Duration     // outbound HTTP timeout for non-SDK calls (Autocomplete); 0 → 15s
+	UserAgent   string            // User-Agent header for outbound requests; "" → SDK default
+	Logger      httpclient.Logger // forwards HTTP client debug output (retries, connection setup); nil → silent
 }
 
 // New constructs an authenticated DQL client from a tenant URL and platform
-// token.
+// token, using default Options.
 func New(tenantURL, token string) (*Client, error) {
 	return NewWith(tenantURL, token, Options{})
 }
@@ -46,13 +53,21 @@ func New(tenantURL, token string) (*Client, error) {
 // NewWith is New() with overridable Options.
 func NewWith(tenantURL, token string, opts Options) (*Client, error) {
 	if tenantURL == "" {
-		return nil, fmt.Errorf("tenant URL is empty")
+		return nil, errors.New("tenant URL is empty")
 	}
 	if token == "" {
-		return nil, fmt.Errorf("API token is empty")
+		return nil, errors.New("API token is empty")
 	}
 
-	httpClient, err := httpclient.New(tenantURL, httpclient.WithToken(token))
+	httpOpts := []httpclient.Option{httpclient.WithToken(token)}
+	if opts.UserAgent != "" {
+		httpOpts = append(httpOpts, httpclient.WithUserAgent(opts.UserAgent))
+	}
+	if opts.Logger != nil {
+		httpOpts = append(httpOpts, httpclient.WithLogger(opts.Logger))
+	}
+
+	httpClient, err := httpclient.New(tenantURL, httpOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("constructing http client: %w", err)
 	}
@@ -88,7 +103,9 @@ func (c *Client) acquire(ctx context.Context) (func(), error) {
 
 // Query runs a DQL query via execute+poll, with retry on transient errors
 // (429 + 5xx + transport hiccups). Zero from/to means "let Grail use its
-// defaults" (used by CheckHealth's `data record` probe).
+// defaults" (used by CheckHealth's lightweight probes). Non-zero values
+// are passed as DefaultTimeframeStart/End and only apply when the DQL itself
+// does not specify a from:/to: clause.
 func (c *Client) Query(ctx context.Context, dql string, from, to time.Time) (*query.Response, error) {
 	release, err := c.acquire(ctx)
 	if err != nil {
@@ -134,7 +151,7 @@ func (c *Client) Autocomplete(ctx context.Context, body []byte) ([]byte, error) 
 		if err != nil {
 			return nil, err
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		out, rerr := io.ReadAll(resp.Body)
 		if rerr != nil {
 			return nil, rerr
@@ -167,4 +184,52 @@ func parseRetryAfter(v string) time.Duration {
 		}
 	}
 	return 0
+}
+
+// Verify validates DQL syntax without executing the query. Used by
+// CheckHealth as a cheap auth+connectivity probe (no Grail scan budget
+// consumed) and available for future editor integrations to surface inline
+// syntax errors with line/column positions.
+func (c *Client) Verify(ctx context.Context, dql string) (*query.VerifyResponse, error) {
+	return c.handler.Verify(ctx, query.VerifyRequest{Query: dql})
+}
+
+// ValidateTenantURL checks that the URL parses, uses HTTPS, and points at a
+// Dynatrace Platform endpoint. Wrong-domain mistakes (.live.dynatrace.com,
+// bare .dynatrace.com, dev/sprint without .apps., Managed /e/<envid>) get
+// human-readable "did you mean" suggestions from dtctl's urls package.
+func ValidateTenantURL(raw string) error {
+	if raw == "" {
+		return errors.New("tenant URL is empty — set it in the data source config page")
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return fmt.Errorf("tenant URL must look like https://<env>.apps.dynatrace.com, got %q", raw)
+	}
+	if suggestions := dturls.Suggestions(raw); len(suggestions) > 0 {
+		return errors.New(strings.Join(suggestions, "; "))
+	}
+	if !strings.Contains(strings.ToLower(u.Host), "dynatrace") {
+		return fmt.Errorf("tenant URL host %q does not look like a Dynatrace endpoint", u.Host)
+	}
+	return nil
+}
+
+// ValidateToken checks the token has a recognised Dynatrace shape so users
+// see a clear up-front error instead of a 401 from Grail at query time. API
+// tokens (dt0c01.*) and platform tokens (dt0s16.*) are accepted directly;
+// JWT-shaped tokens (three dot-separated segments) are accepted as OAuth
+// bearers. Anything else is rejected.
+func ValidateToken(token string) error {
+	if token == "" {
+		return errors.New("API token is empty — set it in the data source config page")
+	}
+	switch auth.Classify(token) {
+	case auth.TokenTypeAPIToken, auth.TokenTypePlatform:
+		return nil
+	}
+	if strings.Count(token, ".") == 2 {
+		return nil
+	}
+	return errors.New("API token has an unrecognised shape; expected a platform token (dt0s16.*), API token (dt0c01.*), or OAuth JWT bearer")
 }
