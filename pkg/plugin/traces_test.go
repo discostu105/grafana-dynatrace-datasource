@@ -90,6 +90,39 @@ func TestRecordsToTraceFrame_StatusFromVerdict(t *testing.T) {
 	}
 }
 
+func TestRecordsToTraceFrame_StatusFromRequestIsFailed(t *testing.T) {
+	// No verdict, no status.code — request.is_failed alone forces error.
+	rec := sampleSpan()
+	delete(rec, "dt.failure_detection.verdict")
+	rec["request.is_failed"] = true
+	frames, _ := recordsToTraceFrame("A", []map[string]interface{}{rec})
+	got := fieldByName(frames[0], "statusCode").At(0)
+	if got != int64(2) {
+		t.Errorf("request.is_failed=true → 2 (error), got %v", got)
+	}
+}
+
+func TestRecordsToTraceFrame_OperationNameFallbackToEndpoint(t *testing.T) {
+	rec := sampleSpan()
+	delete(rec, "span.name")
+	rec["endpoint.name"] = "GET /api/users"
+	frames, _ := recordsToTraceFrame("A", []map[string]interface{}{rec})
+	op := fieldByName(frames[0], "operationName").At(0).(string)
+	if op != "GET /api/users" {
+		t.Errorf("empty span.name should fall back to endpoint.name, got %q", op)
+	}
+}
+
+func TestBoolField(t *testing.T) {
+	rec := map[string]interface{}{"a": true, "b": false, "c": "true", "d": "false", "e": "TRUE", "f": "anything"}
+	cases := map[string]bool{"a": true, "b": false, "c": true, "d": false, "e": true, "f": false, "missing": false}
+	for k, want := range cases {
+		if got := boolField(rec, k); got != want {
+			t.Errorf("boolField(%q) = %v, want %v", k, got, want)
+		}
+	}
+}
+
 func TestRecordsToTraceFrame_KindLowercase(t *testing.T) {
 	rec := sampleSpan()
 	rec["span.kind"] = "SERVER"

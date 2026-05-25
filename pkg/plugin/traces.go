@@ -67,7 +67,10 @@ func recordsToTraceFrame(refID string, records []map[string]interface{}) ([]*dat
 		traceIDs[i] = stringField(rec, "trace.id")
 		spanIDs[i] = stringField(rec, "span.id")
 		parentSpanIDs[i] = stringField(rec, "span.parent_id")
-		operationNames[i] = stringField(rec, "span.name")
+		// operationName: prefer span.name, fall back to endpoint.name
+		// (Dynatrace's request-routing detection sometimes leaves span.name
+		// empty but populates endpoint.name from URL pattern matching).
+		operationNames[i] = firstNonEmpty(stringField(rec, "span.name"), stringField(rec, "endpoint.name"))
 		serviceNames[i] = firstNonEmpty(stringField(rec, "service.name"), stringField(rec, "dt.service.name"))
 		startTimes[i] = parseSpanTimeMs(rec, "start_time")
 		durations[i] = computeDurationMs(rec)
@@ -79,7 +82,11 @@ func recordsToTraceFrame(refID string, records []map[string]interface{}) ([]*dat
 		logsField[i] = "[]"
 		referencesField[i] = "[]"
 		kinds[i] = normaliseSpanKind(stringField(rec, "span.kind"))
-		statusCodes[i] = mapStatusCode(stringField(rec, "dt.failure_detection.verdict"), stringField(rec, "status.code"))
+		statusCodes[i] = mapStatusCode(
+			stringField(rec, "dt.failure_detection.verdict"),
+			stringField(rec, "status.code"),
+			boolField(rec, "request.is_failed"),
+		)
 		statusMessages[i] = ""
 	}
 
@@ -119,8 +126,14 @@ func normaliseSpanKind(s string) string {
 //	1 = ok
 //	2 = error
 //
-// Grafana's traces panel treats this as a number, not a string.
-func mapStatusCode(dtVerdict, otelStatus string) int64 {
+// Grafana's traces panel treats this as a number, not a string. Three
+// signals are consulted in priority order:
+//
+//  1. dt.failure_detection.verdict (Dynatrace native, most reliable)
+//  2. status.code (OTel-native if the SDK populates it)
+//  3. request.is_failed (boolean flag Dynatrace sets when failure
+//     detection rules fire — backstop for spans without a verdict yet)
+func mapStatusCode(dtVerdict, otelStatus string, requestIsFailed bool) int64 {
 	switch strings.ToLower(dtVerdict) {
 	case "success", "ok":
 		return 1
@@ -133,7 +146,24 @@ func mapStatusCode(dtVerdict, otelStatus string) int64 {
 	case "error", "2":
 		return 2
 	}
+	if requestIsFailed {
+		return 2
+	}
 	return 0
+}
+
+// boolField pulls a boolean column out of the record. Accepts native
+// bool plus the lowercase-string variants Dynatrace sometimes emits
+// for serialised booleans.
+func boolField(rec map[string]interface{}, key string) bool {
+	v := rec[key]
+	switch x := v.(type) {
+	case bool:
+		return x
+	case string:
+		return strings.EqualFold(x, "true")
+	}
+	return false
 }
 
 func setTraceVis(f *data.Frame) {
