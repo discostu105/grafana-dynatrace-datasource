@@ -165,6 +165,28 @@ def main():
         },
     ]
 
+    # Annotation source — Davis events pinned on every panel's timeline.
+    # The tenant returns empty for now (no Davis events ingested), but
+    # the source is wired so they appear automatically once events show
+    # up. This also exercises the annotation contract end-to-end (R2.2).
+    annotations = {
+        "list": [
+            {
+                "name": "Davis events",
+                "datasource": DS_TEMPLATE,
+                "enable": True,
+                "iconColor": "red",
+                "target": {
+                    "refId": "Anno",
+                    "dqlQuery": (
+                        'fetch dt.davis.events | filter $__timeFilter(start_time) '
+                        '| fields timestamp = start_time, title = event.name, text = description, tags = event.kind'
+                    ),
+                },
+            }
+        ]
+    }
+
     dashboard = {
         "title": title,
         "uid": Path(out_path).stem,
@@ -174,6 +196,7 @@ def main():
         "timezone": "browser",
         "time": {"from": "now-24h", "to": "now"},
         "refresh": "1m",
+        "annotations": annotations,
         "templating": {"list": variables},
         "panels": panels,
     }

@@ -13,6 +13,23 @@
     "to": "now"
   },
   "refresh": "1m",
+  "annotations": {
+    "list": [
+      {
+        "name": "Davis events",
+        "datasource": {
+          "type": "discostu105-dynatracegrail-datasource",
+          "uid": "P6C323D126547F71F"
+        },
+        "enable": true,
+        "iconColor": "red",
+        "target": {
+          "refId": "Anno",
+          "dqlQuery": "fetch dt.davis.events | filter $__timeFilter(start_time) | fields timestamp = start_time, title = event.name, text = description, tags = event.kind"
+        }
+      }
+    ]
+  },
   "templating": {
     "list": [
       {
