@@ -21,6 +21,7 @@ import { AdhocFilter, DqlQuery, DqlDataSourceOptions, DEFAULT_QUERY } from './ty
 import { GrailAutocompleteResponse } from './dql/language';
 import { applyDerivedFields } from './derivedFields';
 import { buildLogContextDQL, buildLogsVolumeQuery } from './logsHooks';
+import { decodeTraceFrames } from './tracesPostprocess';
 
 // Curated tag keys we always expose for the ad-hoc filter UI. The Loxone
 // tenant we've seen in practice carries control.name / control.category /
@@ -72,19 +73,22 @@ export class DataSource
     return DEFAULT_QUERY;
   }
 
-  // query is overridden so the response stream can be post-processed —
-  // currently for derived-field enhancement on log frames (regex matches
-  // on the body → clickable button column with DataLinks).
+  // query is overridden so the response stream can be post-processed:
+  //  - derived-field enhancement on log frames (regex matches on the body
+  //    → clickable button column with DataLinks)
+  //  - trace frames have their `tags` column JSON-decoded back into actual
+  //    JS arrays so Grafana's traces panel doesn't choke on
+  //    `K.reduce is not a function`.
   query(request: DataQueryRequest<DqlQuery>): Observable<DataQueryResponse> {
-    const stream = super.query(request);
-    if (!this.derivedFields?.length) {
-      return stream;
-    }
-    return stream.pipe(
-      map((resp) => ({
-        ...resp,
-        data: applyDerivedFields(resp.data ?? [], this.derivedFields),
-      }))
+    return super.query(request).pipe(
+      map((resp) => {
+        let data = resp.data ?? [];
+        if (this.derivedFields?.length) {
+          data = applyDerivedFields(data, this.derivedFields);
+        }
+        data = decodeTraceFrames(data);
+        return { ...resp, data };
+      })
     );
   }
 
