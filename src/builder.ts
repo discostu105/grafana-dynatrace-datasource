@@ -26,8 +26,8 @@ export const BUILDER_SOURCES: BuilderSource[] = [
   'events',
   'spans',
   'metric.series',
-  'dt.entity.host',
-  'dt.entity.service',
+  'smartscapeNodes "HOST"',
+  'smartscapeNodes "SERVICE"',
 ];
 
 export const BUILDER_OPERATORS: BuilderOperator[] = ['==', '!=', 'contains', 'matches'];
@@ -47,7 +47,7 @@ export const BUILDER_BUCKETS: BuilderBucket[] = ['auto', '1m', '5m', '15m', '1h'
 export function dqlFromBuilder(b: BuilderState): string {
   const filters = b.filters.filter((f) => f.field?.trim() && f.value?.trim());
   const groupBy = b.groupBy.filter(Boolean);
-  const lines: string[] = [`fetch ${b.source}`];
+  const lines: string[] = [b.source.startsWith('smartscapeNodes ') ? b.source : `fetch ${b.source}`];
   if (filters.length) {
     lines.push(`| filter ${filters.map(formatFilter).join(' AND ')}`);
   }

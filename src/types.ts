@@ -10,8 +10,8 @@ export type BuilderSource =
   | 'logs'
   | 'events'
   | 'spans'
-  | 'dt.entity.host'
-  | 'dt.entity.service';
+  | 'smartscapeNodes "HOST"'
+  | 'smartscapeNodes "SERVICE"';
 
 export type BuilderOperator = '==' | '!=' | 'contains' | 'matches';
 

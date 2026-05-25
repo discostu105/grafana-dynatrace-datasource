@@ -79,4 +79,10 @@ describe('dqlFromBuilder', () => {
     const dql = dqlFromBuilder(s({ aggregation: { fn: 'avg' }, source: 'metric.series', groupBy: ['k'] }));
     expect(dql).toContain('avg(value)');
   });
+
+  it('smartscapeNodes source is emitted verbatim (no fetch prefix)', () => {
+    const dql = dqlFromBuilder(s({ source: 'smartscapeNodes "HOST"' }));
+    expect(dql.startsWith('smartscapeNodes "HOST"')).toBe(true);
+    expect(dql).not.toContain('fetch smartscapeNodes');
+  });
 });
