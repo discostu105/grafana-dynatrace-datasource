@@ -21,10 +21,11 @@ import (
 )
 
 var (
-	_ backend.QueryDataHandler      = (*Datasource)(nil)
-	_ backend.CheckHealthHandler    = (*Datasource)(nil)
-	_ backend.CallResourceHandler   = (*Datasource)(nil)
-	_ instancemgmt.InstanceDisposer = (*Datasource)(nil)
+	_ backend.QueryDataHandler       = (*Datasource)(nil)
+	_ backend.CheckHealthHandler     = (*Datasource)(nil)
+	_ backend.CallResourceHandler    = (*Datasource)(nil)
+	_ backend.CollectMetricsHandler  = (*Datasource)(nil)
+	_ instancemgmt.InstanceDisposer  = (*Datasource)(nil)
 )
 
 const (
@@ -119,11 +120,13 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 		body, err := d.dt.Autocomplete(ctx, req.Body)
 		if err != nil {
 			log.DefaultLogger.Warn("autocomplete proxy failed", "err", err)
+			observeAutocomplete("error")
 			return sender.Send(&backend.CallResourceResponse{
 				Status: http.StatusBadGateway,
 				Body:   []byte(err.Error()),
 			})
 		}
+		observeAutocomplete("ok")
 		return sender.Send(&backend.CallResourceResponse{
 			Status:  http.StatusOK,
 			Headers: map[string][]string{"Content-Type": {"application/json"}},
@@ -163,14 +166,18 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 }
 
 func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.DataResponse {
+	start := time.Now()
 	if d.cfgErr != nil {
+		observeQuery("", "bad_request", time.Since(start).Seconds())
 		return backend.ErrDataResponse(backend.StatusBadRequest, d.cfgErr.Error())
 	}
 	var qm queryModel
 	if err := json.Unmarshal(q.JSON, &qm); err != nil {
+		observeQuery("", "bad_request", time.Since(start).Seconds())
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("unmarshal query: %v", err))
 	}
 	if qm.DqlQuery == "" {
+		observeQuery(qm.QueryType, "bad_request", time.Since(start).Seconds())
 		return backend.ErrDataResponse(backend.StatusBadRequest, "dqlQuery is empty")
 	}
 
@@ -182,10 +189,10 @@ func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.Dat
 	dql := applyAdhocFilters(qm.DqlQuery, qm.AdhocFilters)
 	dql = macros.Expand(dql, macros.Range{From: from, To: to, Interval: interval})
 
-	start := time.Now()
 	dqlResp, err := d.dt.Query(cctx, dql, from, to)
 	if err != nil {
 		log.DefaultLogger.Warn("dql query failed", "refID", q.RefID, "err", err, "duration", time.Since(start))
+		observeQuery(qm.QueryType, "error", time.Since(start).Seconds())
 		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
 	}
 
@@ -199,6 +206,7 @@ func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.Dat
 		frames, err = recordsToFrames(q.RefID, records)
 	}
 	if err != nil {
+		observeQuery(qm.QueryType, "error", time.Since(start).Seconds())
 		return backend.ErrDataResponse(backend.StatusInternal, fmt.Sprintf("mapping records: %v", err))
 	}
 	applyLegendFormat(frames, qm.LegendFormat)
@@ -206,6 +214,7 @@ func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.Dat
 	inferMinMax(frames)
 	attachNotifications(frames, dqlResp.GetNotifications())
 	log.DefaultLogger.Info("dql query ok", "refID", q.RefID, "queryType", qm.QueryType, "rows", len(records), "frames", len(frames), "duration", time.Since(start))
+	observeQuery(qm.QueryType, "ok", time.Since(start).Seconds())
 	return backend.DataResponse{Frames: frames}
 }
 
