@@ -203,6 +203,7 @@ func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.Dat
 	}
 	applyLegendFormat(frames, qm.LegendFormat)
 	inferDecimals(frames)
+	inferMinMax(frames)
 	attachNotifications(frames, dqlResp.GetNotifications())
 	log.DefaultLogger.Info("dql query ok", "refID", q.RefID, "queryType", qm.QueryType, "rows", len(records), "frames", len(frames), "duration", time.Since(start))
 	return backend.DataResponse{Frames: frames}
