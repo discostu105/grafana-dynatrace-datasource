@@ -16,6 +16,7 @@ export const SELECTORS = {
     queryTypeRadios: {
       timeseries: 'Timeseries / Table',
       logs: 'Logs',
+      traces: 'Traces',
     },
     legendLabel: 'Legend',
     bodyFieldLabel: 'Body field',

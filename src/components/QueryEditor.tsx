@@ -11,6 +11,7 @@ type Props = QueryEditorProps<DataSource, DqlQuery, DqlDataSourceOptions>;
 const QUERY_TYPES: Array<{ label: string; value: DqlQueryType }> = [
   { label: SELECTORS.queryEditor.queryTypeRadios.timeseries, value: 'timeseries' },
   { label: SELECTORS.queryEditor.queryTypeRadios.logs, value: 'logs' },
+  { label: SELECTORS.queryEditor.queryTypeRadios.traces, value: 'traces' },
 ];
 
 export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) {
@@ -48,7 +49,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
           <Input width={30} placeholder="content" value={query.logBodyField ?? ''} onChange={onBodyFieldChange} />
         </InlineField>
       )}
-      {queryType !== 'logs' && (
+      {queryType === 'timeseries' && (
         <InlineField
           label={SELECTORS.queryEditor.legendLabel}
           labelWidth={18}

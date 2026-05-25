@@ -5,7 +5,7 @@
   "id": "discostu105-dynatracegrail-datasource",
   "metrics": true,
   "logs": true,
-  "tracing": false,
+  "tracing": true,
   "alerting": true,
   "annotations": true,
   "backend": true,

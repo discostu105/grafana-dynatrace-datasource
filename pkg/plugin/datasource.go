@@ -142,7 +142,7 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 
 type queryModel struct {
 	DqlQuery  string `json:"dqlQuery"`
-	QueryType string `json:"queryType"` // "timeseries" (default) | "logs"
+	QueryType string `json:"queryType"` // "timeseries" (default) | "logs" | "traces"
 	// LogBodyField names the column that carries the log message body when
 	// QueryType == "logs". Defaults to "content" (the column DQL `fetch
 	// logs` projects by default).
@@ -200,9 +200,19 @@ func (d *Datasource) query(ctx context.Context, q backend.DataQuery) backend.Dat
 	logRawShape(q.RefID, dql, records)
 
 	var frames []*data.Frame
-	if qm.QueryType == "logs" {
+	switch qm.QueryType {
+	case "logs":
 		frames, err = recordsToLogFrame(q.RefID, records, qm.LogBodyField)
-	} else {
+	case "traces":
+		// If the result carries span.id columns it's trace-detail; otherwise
+		// it's a trace-list / aggregate over spans and the regular table
+		// mapper renders it cleanly.
+		if isTraceDetailShape(records) {
+			frames, err = recordsToTraceFrame(q.RefID, records)
+		} else {
+			frames, err = recordsToFrames(q.RefID, records)
+		}
+	default:
 		frames, err = recordsToFrames(q.RefID, records)
 	}
 	if err != nil {

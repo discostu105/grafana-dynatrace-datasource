@@ -1,7 +1,7 @@
 import { DataSourceJsonData } from '@grafana/data';
 import { DataQuery } from '@grafana/schema';
 
-export type DqlQueryType = 'timeseries' | 'logs';
+export type DqlQueryType = 'timeseries' | 'logs' | 'traces';
 
 export interface DqlQuery extends DataQuery {
   dqlQuery: string;
