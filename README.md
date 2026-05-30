@@ -18,7 +18,7 @@ logs, traces, and events rendered as native Grafana visualizations.
 
 ## Features
 
-- **Write DQL, not a new query language.** Author queries in a Monaco editor
+- **Write DQL.** Author queries in a Monaco editor
   with DQL syntax highlighting, one-keystroke formatting (`Shift+Alt+F`), and
   **autocomplete backed by your live Grail schema** — or build them visually
   with the [Builder/Code toggle](#querying-grail-with-dql), whose source list
