@@ -125,7 +125,7 @@ timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}, from:"$__timeF
 
 Bind the window with the `from:`/`to:` parameters: Grail scopes the metric scan
 to the panel/alert range at the source (pushed down), and the bound is explicit
-rather than relying on the request's *default* timeframe — which any in-query
+rather than relying on the request's _default_ timeframe — which any in-query
 timeframe overrides and which isn't present for every caller. **Don't**
 post-filter a timeseries with `$__timeFilter(timestamp)`: a `timeseries` result
 has no per-row `timestamp` (only `timeframe`/`interval` metadata), and filtering
@@ -140,7 +140,7 @@ fetch dt.davis.events, from:"$__timeFrom", to:"$__timeTo"
 ```
 
 Use `$__timeFilter(<field>)` (see [Macros](#macros)) only for the narrower case
-of filtering rows on a *specific* timestamp field that differs from the scan
+of filtering rows on a _specific_ timestamp field that differs from the scan
 bound — e.g. `| filter $__timeFilter(start_time)`. It's a row filter, never a
 substitute for bounding the scan, and it can't shrink a `timeseries` result.
 
@@ -282,7 +282,7 @@ input (defaults to `content`).
 | Query returns empty but no error               | Your time range has no data, or a `filter` is too strict. Check the panel's **Inspect → Query** for the expanded DQL and any Grail notices.  |
 | "dqlQuery is empty"                            | The panel has no DQL text. Enter a query or switch to the visual builder.                                                                    |
 | Timeouts on heavy queries                      | Raise **Query timeout (s)** in the data source config and narrow the DQL (`limit`, tighter filters, longer bucket size).                     |
-| Percentile/median returns empty for metrics    | DQL needs an explicit `rollup` — the visual builder adds `, 95, rollup: avg` automatically; do the same in hand-written DQL.                  |
+| Percentile/median returns empty for metrics    | DQL needs an explicit `rollup` — the visual builder adds `, 95, rollup: avg` automatically; do the same in hand-written DQL.                 |
 
 Grail sampling / scan-limit notices are surfaced as panel notices — open
 **Inspect → Query** to see them.
