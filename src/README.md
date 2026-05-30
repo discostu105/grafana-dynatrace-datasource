@@ -72,10 +72,10 @@ Highlights:
 Host CPU bucketed by host, as a timeseries:
 
 ```dql
-timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}
+timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}, from:"$__timeFrom", to:"$__timeTo"
 ```
 
-`timeseries` honors the panel/alert time range automatically — no `$__timeFilter` needed. Use `$__timeFilter(<field>)` only on record queries (`fetch …`).
+The `from:`/`to:` parameters scope the metric scan to the panel/alert range at the source. Don't post-filter a timeseries with `$__timeFilter` — that macro is for record queries (`fetch …`).
 
 ## Documentation
 

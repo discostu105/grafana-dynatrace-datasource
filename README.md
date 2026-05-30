@@ -71,10 +71,10 @@ datasources:
 **Timeseries** — host CPU bucketed by host:
 
 ```dql
-timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}
+timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}, from:"$__timeFrom", to:"$__timeTo"
 ```
 
-`timeseries` runs over the dashboard/alert time range automatically — there is no per-row `timestamp` to filter, so **don't** add `$__timeFilter` here. (For an explicit window, pass `from:`/`to:` parameters to the command.)
+Bind the window with the `from:`/`to:` parameters: Grail scopes the metric scan to the panel/alert range at the source (pushed down), and the bound is explicit rather than relying on the request's *default* timeframe — which any in-query timeframe overrides and which isn't present for every caller. **Don't** post-filter with `$__timeFilter(timestamp)`: a `timeseries` result has no per-row `timestamp` (only `timeframe`/`interval` metadata), and filtering after aggregation can't shrink the scan.
 
 **Records** — `$__timeFilter` belongs on record queries (`fetch`), where you filter raw rows by a timestamp field:
 
@@ -87,7 +87,7 @@ fetch dt.davis.events
 **Table** — top hosts by current CPU:
 
 ```dql
-timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}
+timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}, from:"$__timeFrom", to:"$__timeTo"
 | fieldsAdd current = arrayLast(cpu)
 | filter isNotNull(current)
 | fields dt.smartscape.host, current
@@ -145,7 +145,7 @@ a query that returns a numeric timeseries and add a Grafana threshold/reduce
 expression on top. Example — alert when average host CPU exceeds 90%:
 
 ```dql
-timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}
+timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}, from:"$__timeFrom", to:"$__timeTo"
 ```
 
 In the alert rule, add a **Reduce** (Last) and a **Threshold** (`IS ABOVE 90`)
