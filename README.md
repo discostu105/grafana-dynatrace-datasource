@@ -146,7 +146,6 @@ expression on top. Example — alert when average host CPU exceeds 90%:
 
 ```dql
 timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}
-| filter $__timeFilter(timestamp)
 ```
 
 In the alert rule, add a **Reduce** (Last) and a **Threshold** (`IS ABOVE 90`)
