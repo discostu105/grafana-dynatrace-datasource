@@ -1,7 +1,7 @@
 # Dynatrace Grail (DQL) data source for Grafana
 
-[![License](https://img.shields.io/github/license/discostu105/grafana-dynatrace-datasource)](https://github.com/discostu105/grafana-dynatrace-datasource/blob/main/LICENSE)
-[![CI](https://github.com/discostu105/grafana-dynatrace-datasource/actions/workflows/ci.yml/badge.svg)](https://github.com/discostu105/grafana-dynatrace-datasource/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/discostu105/grafana-grail-datasource)](https://github.com/discostu105/grafana-grail-datasource/blob/main/LICENSE)
+[![CI](https://github.com/discostu105/grafana-grail-datasource/actions/workflows/ci.yml/badge.svg)](https://github.com/discostu105/grafana-grail-datasource/actions/workflows/ci.yml)
 
 Query a [Dynatrace](https://www.dynatrace.com/) platform tenant straight from
 Grafana using [DQL — the Dynatrace Query Language](https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language).
@@ -79,17 +79,17 @@ timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}
 ## Documentation
 
 - **Full README, macros, provisioning, troubleshooting, and DQL primer:**
-  <https://github.com/discostu105/grafana-dynatrace-datasource#readme>
+  <https://github.com/discostu105/grafana-grail-datasource#readme>
 - **DQL reference:**
   <https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language>
 
 ## Contributing
 
 Issues and pull requests are welcome — see
-[CONTRIBUTING.md](https://github.com/discostu105/grafana-dynatrace-datasource/blob/main/CONTRIBUTING.md).
+[CONTRIBUTING.md](https://github.com/discostu105/grafana-grail-datasource/blob/main/CONTRIBUTING.md).
 Report bugs and request features on the
-[issue tracker](https://github.com/discostu105/grafana-dynatrace-datasource/issues).
+[issue tracker](https://github.com/discostu105/grafana-grail-datasource/issues).
 
 ## License
 
-[Apache-2.0](https://github.com/discostu105/grafana-dynatrace-datasource/blob/main/LICENSE)
+[Apache-2.0](https://github.com/discostu105/grafana-grail-datasource/blob/main/LICENSE)
