@@ -76,13 +76,14 @@ timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}, from:"$__timeF
 
 Bind the window with the `from:`/`to:` parameters: Grail scopes the metric scan to the panel/alert range at the source (pushed down), and the bound is explicit rather than relying on the request's *default* timeframe — which any in-query timeframe overrides and which isn't present for every caller. **Don't** post-filter with `$__timeFilter(timestamp)`: a `timeseries` result has no per-row `timestamp` (only `timeframe`/`interval` metadata), and filtering after aggregation can't shrink the scan.
 
-**Records** — `$__timeFilter` belongs on record queries (`fetch`), where you filter raw rows by a timestamp field:
+**Records** — `fetch` takes the same `from:`/`to:` parameters, so bind the scan there too:
 
 ```dql
-fetch dt.davis.events
-| filter $__timeFilter(start_time)
+fetch dt.davis.events, from:"$__timeFrom", to:"$__timeTo"
 | fields timestamp = start_time, title = event.name, text = description
 ```
+
+Use `$__timeFilter(<field>)` (see [Macros](#macros)) only for the narrower case of filtering rows on a *specific* timestamp field that differs from the scan bound — e.g. add `| filter $__timeFilter(start_time)` to keep only events whose `start_time` (not the record timestamp) falls in the window. It's a row filter, never a substitute for bounding the scan, and it can't shrink a `timeseries` result.
 
 **Table** — top hosts by current CPU:
 
@@ -158,7 +159,7 @@ Set the dashboard annotation query's data source to this plugin and write DQL
 that returns a time column plus optional `text` / `title` columns, e.g.:
 
 ```dql
-fetch events
+fetch events, from:"$__timeFrom", to:"$__timeTo"
 | filter event.kind == "DEPLOYMENT_EVENT"
 | fields timestamp, title = event.name, text = event.description
 ```
