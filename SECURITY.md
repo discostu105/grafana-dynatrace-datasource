@@ -5,7 +5,7 @@
 Please **do not** open a public GitHub issue for security vulnerabilities.
 
 Instead, report them privately via GitHub's
-[private vulnerability reporting](https://github.com/discostu105/grafana-dynatrace-datasource/security/advisories/new)
+[private vulnerability reporting](https://github.com/discostu105/grafana-grail-datasource/security/advisories/new)
 ("Report a vulnerability" under the **Security** tab). We aim to acknowledge
 reports within a few business days and will keep you updated as we investigate.
 

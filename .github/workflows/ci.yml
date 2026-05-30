@@ -67,6 +67,13 @@ jobs:
         with:
           version: latest
           args: ./...
+          # The action's restore cache is keyed on go.sum, which the repo rename
+          # (grafana-dynatrace-datasource -> grafana-grail-datasource) did not change.
+          # That left a stale cache holding analysis results under the old checkout
+          # path, so golangci replayed phantom gosec hits and could not re-read the
+          # relocated files to honor the //nolint directives. Disable the cache so
+          # lint always analyzes the real working tree.
+          skip-cache: true
 
       - name: Build backend
         if: steps.check-for-backend.outputs.has-backend == 'true'

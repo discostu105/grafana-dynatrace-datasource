@@ -56,5 +56,5 @@ npm run e2e              # Playwright end-to-end tests (needs Grafana running)
 
 ## Reporting bugs / requesting features
 
-Use the [issue tracker](https://github.com/discostu105/grafana-dynatrace-datasource/issues)
+Use the [issue tracker](https://github.com/discostu105/grafana-grail-datasource/issues)
 and the provided templates. For security issues, see [SECURITY.md](SECURITY.md).
