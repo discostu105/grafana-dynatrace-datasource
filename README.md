@@ -72,7 +72,16 @@ datasources:
 
 ```dql
 timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}
-| filter $__timeFilter(timestamp)
+```
+
+`timeseries` runs over the dashboard/alert time range automatically — there is no per-row `timestamp` to filter, so **don't** add `$__timeFilter` here. (For an explicit window, pass `from:`/`to:` parameters to the command.)
+
+**Records** — `$__timeFilter` belongs on record queries (`fetch`), where you filter raw rows by a timestamp field:
+
+```dql
+fetch dt.davis.events
+| filter $__timeFilter(start_time)
+| fields timestamp = start_time, title = event.name, text = description
 ```
 
 **Table** — top hosts by current CPU:
