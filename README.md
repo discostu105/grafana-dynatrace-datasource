@@ -6,9 +6,6 @@ already write in the Dynatrace UI. Build panels, alert rules, dashboard
 variables, and annotations against a Dynatrace platform tenant, with metrics,
 logs, traces, and events rendered as native Grafana visualizations.
 
-There is no official Dynatrace Grail data source for Grafana — this plugin
-fills that gap and speaks DQL end to end.
-
 [![Release](https://img.shields.io/github/v/release/discostu105/grafana-grail-datasource?sort=semver&label=release)](https://github.com/discostu105/grafana-grail-datasource/releases)
 [![License](https://img.shields.io/github/license/discostu105/grafana-grail-datasource)](LICENSE)
 ![Grafana](https://img.shields.io/badge/Grafana-%E2%89%A5%2012.3.0-F46800?logo=grafana&logoColor=white)
