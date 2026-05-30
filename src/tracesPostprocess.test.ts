@@ -1,8 +1,8 @@
-import { MutableDataFrame, FieldType } from '@grafana/data';
+import { createDataFrame, FieldType } from '@grafana/data';
 import { decodeTraceFrames } from './tracesPostprocess';
 
 function traceFrame(tags: Array<string | null>) {
-  return new MutableDataFrame({
+  return createDataFrame({
     refId: 'A',
     meta: { preferredVisualisationType: 'trace' },
     fields: [
@@ -19,22 +19,20 @@ describe('decodeTraceFrames', () => {
     const out = decodeTraceFrames([f])[0];
     const tags = out.fields.find((x) => x.name === 'tags')!;
     expect(tags.type).toBe(FieldType.other);
-    const v0 = tags.values.get ? tags.values.get(0) : (tags.values as any)[0];
-    expect(v0).toEqual([{ key: 'host', value: 'h1' }]);
+    expect(tags.values[0]).toEqual([{ key: 'host', value: 'h1' }]);
   });
 
   it('treats invalid JSON as empty array (never throws)', () => {
     const f = traceFrame(['not json', null, '']);
     const out = decodeTraceFrames([f])[0];
     const tags = out.fields.find((x) => x.name === 'tags')!;
-    const v = (i: number) => (tags.values.get ? tags.values.get(i) : (tags.values as any)[i]);
-    expect(v(0)).toEqual([]);
-    expect(v(1)).toEqual([]);
-    expect(v(2)).toEqual([]);
+    expect(tags.values[0]).toEqual([]);
+    expect(tags.values[1]).toEqual([]);
+    expect(tags.values[2]).toEqual([]);
   });
 
   it('passes non-trace frames through unchanged', () => {
-    const f = new MutableDataFrame({
+    const f = createDataFrame({
       refId: 'A',
       meta: { preferredVisualisationType: 'graph' as any },
       fields: [{ name: 'tags', type: FieldType.string, values: ['x'] }],
@@ -44,7 +42,7 @@ describe('decodeTraceFrames', () => {
   });
 
   it('is a no-op for frames without a tags column', () => {
-    const f = new MutableDataFrame({
+    const f = createDataFrame({
       refId: 'A',
       meta: { preferredVisualisationType: 'trace' },
       fields: [{ name: 'traceID', type: FieldType.string, values: ['x'] }],

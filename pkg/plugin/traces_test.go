@@ -12,21 +12,21 @@ import (
 // input for the trace mapper.
 func sampleSpan() map[string]interface{} {
 	return map[string]interface{}{
-		"trace.id":                       "2d164bf9b509d114e3f9363b10665722",
-		"span.id":                        "8cf4cece244946bf",
-		"span.parent_id":                 "f5a68bc583fef0bd",
-		"span.name":                      "okey-dokey-0",
-		"service.name":                   "homelab-telemetrygen",
-		"start_time":                     "2026-05-25T11:58:20.128911521Z",
-		"end_time":                       "2026-05-25T11:58:20.129034521Z",
-		"duration":                       "123000",
-		"dt.failure_detection.verdict":   "success",
-		"deployment.environment":         "homelab",
-		"endpoint.name":                  "okey-dokey-0",
-		"host.name":                      "latitude",
-		"otel.scope.name":                "telemetrygen",
-		"span.kind":                      "server",
-		"request.is_failed":              false,
+		"trace.id":                     "2d164bf9b509d114e3f9363b10665722",
+		"span.id":                      "8cf4cece244946bf",
+		"span.parent_id":               "f5a68bc583fef0bd",
+		"span.name":                    "okey-dokey-0",
+		"service.name":                 "homelab-telemetrygen",
+		"start_time":                   "2026-05-25T11:58:20.128911521Z",
+		"end_time":                     "2026-05-25T11:58:20.129034521Z",
+		"duration":                     "123000",
+		"dt.failure_detection.verdict": "success",
+		"deployment.environment":       "homelab",
+		"endpoint.name":                "okey-dokey-0",
+		"host.name":                    "latitude",
+		"otel.scope.name":              "telemetrygen",
+		"span.kind":                    "server",
+		"request.is_failed":            false,
 	}
 }
 

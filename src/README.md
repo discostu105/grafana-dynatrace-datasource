@@ -1,50 +1,95 @@
-<!-- This README file is going to be the one displayed on the Grafana.com website for your plugin. Uncomment and replace the content here before publishing.
+# Dynatrace Grail (DQL) data source for Grafana
 
-Remove any remaining comments before publishing as these may be displayed on Grafana.com -->
+[![License](https://img.shields.io/github/license/discostu105/grafana-dynatrace-datasource)](https://github.com/discostu105/grafana-dynatrace-datasource/blob/main/LICENSE)
+[![CI](https://github.com/discostu105/grafana-dynatrace-datasource/actions/workflows/ci.yml/badge.svg)](https://github.com/discostu105/grafana-dynatrace-datasource/actions/workflows/ci.yml)
 
-# Dynatracegrail
+Query a [Dynatrace](https://www.dynatrace.com/) platform tenant straight from
+Grafana using [DQL — the Dynatrace Query Language](https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language).
+Build timeseries, table, log, and trace panels, drive alert rules and
+dashboard variables, and keep the exact DQL syntax you already use in the
+Dynatrace UI.
 
-<!-- To help maximize the impact of your README and improve usability for users, we propose the following loose structure:
+## Overview
 
-**BEFORE YOU BEGIN**
-- Ensure all links are absolute URLs so that they will work when the README is displayed within Grafana and Grafana.com
-- Be inspired ✨
-  - [grafana-polystat-panel](https://github.com/grafana/grafana-polystat-panel)
-  - [volkovlabs-variable-panel](https://github.com/volkovlabs/volkovlabs-variable-panel)
+Dynatrace stores observability data in **Grail**, its data lakehouse, and
+queries it with **DQL**. This data source proxies DQL straight to a Dynatrace
+platform tenant and maps the results onto native Grafana frames, so a query
+you wrote in Notebooks renders unchanged in a Grafana panel.
 
-**ADD SOME BADGES**
+Highlights:
 
-Badges convey useful information at a glance for users whether in the Catalog or viewing the source code. You can use the generator on [Shields.io](https://shields.io/badges/dynamic-json-badge) together with the Grafana.com API
-to create dynamic badges that update automatically when you publish a new version to the marketplace.
-
-- For the URL parameter use `https://grafana.com/api/plugins/your-plugin-id`.
-- Example queries:
-  - Downloads: `$.downloads`
-  - Catalog Version: `$.version`
-  - Grafana Dependency: `$.grafanaDependency`
-  - Signature Type: `$.versionSignatureType`
-- Optionally, for the logo parameter use `grafana`.
-
-Full example: ![Dynamic JSON Badge](https://img.shields.io/badge/dynamic/json?logo=grafana&query=$.version&url=https://grafana.com/api/plugins/grafana-polystat-panel&label=Marketplace&prefix=v&color=F47A20)
-
-Consider other [badges](https://shields.io/badges) as you feel appropriate for your project.
-
-## Overview / Introduction
-Provide one or more paragraphs as an introduction to your plugin to help users understand why they should use it.
-
-Consider including screenshots:
-- in [plugin.json](https://grafana.com/developers/plugin-tools/reference/plugin-json#info) include them as relative links.
-- in the README ensure they are absolute URLs.
+- **One query language, both tools** — paste DQL from Dynatrace Notebooks into
+  a Grafana panel and it just runs.
+- **Timeseries, tables, logs, and traces** — the backend detects the result
+  shape (real Grail `timeframe + interval`, log records, span records) and
+  emits the right Grafana frame type, including the Explore logs view and the
+  TraceView.
+- **Server-side time macros** — `$__timeFilter`, `$__from`, `$__to`,
+  `$__interval`, and friends expand on the backend, so alert rules get the same
+  substitutions as panels.
+- **Grafana-native integrations** — alerting, annotations, template/variable
+  queries, dashboard ad-hoc filters, and trace-to-logs / trace-to-metrics
+  correlation.
+- **Monaco DQL editor** — syntax highlighting, a Format action, and
+  autocomplete backed live by Grail's own completion endpoint, plus a visual
+  query builder for getting started.
+- **Resilient backend** — exponential backoff on 429/5xx (honoring
+  `Retry-After`), a per-instance concurrency cap, and Prometheus metrics for
+  query latency and outcomes.
 
 ## Requirements
-List any requirements or dependencies they may need to run the plugin.
 
-## Getting Started
-Provide a quick start on how to configure and use the plugin.
+- Grafana **>= 12.3.0**.
+- A Dynatrace **platform** tenant (`https://<env>.apps.dynatrace.com`) — Grail
+  is a platform feature.
+- A **platform token** (`dt0s16.*`) with at least:
+  - `storage:metrics:read` — timeseries / metrics queries
+  - `storage:logs:read` — log queries and the health probe
+  - `storage:events:read` — events / problems
+  - `storage:spans:read` — trace queries
+  - `storage:buckets:read` — required alongside the table scopes above
+
+  Grant only the scopes for the data you plan to query.
+
+## Getting started
+
+1. **Create a platform token** in Dynatrace → **Settings → Access Tokens →
+   Platform tokens**, with the scopes listed above.
+2. In Grafana go to **Connections → Data sources → Add data source** and search
+   for **Dynatrace Grail**.
+3. Configure the instance:
+   - **Tenant URL** — `https://<env>.apps.dynatrace.com`
+   - **API token** — your `dt0s16.*` token (stored encrypted via
+     `secureJsonData`)
+   - **Query timeout (s)** — default 30; raise for heavy DQL.
+   - **Default timeframe** — used when no panel range exists (variable queries,
+     alerting probes). A Go duration string, default `1h`.
+4. Click **Save & test**. A green check means the token authenticated and a
+   minimal probe query (`fetch logs | limit 1`) succeeded.
+
+### Example query
+
+Host CPU bucketed by host, as a timeseries:
+
+```dql
+timeseries cpu = avg(dt.host.cpu.usage), by:{dt.smartscape.host}
+| filter $__timeFilter(timestamp)
+```
 
 ## Documentation
-If your project has dedicated documentation available for users, provide links here. For help in following Grafana's style recommendations for technical documentation, refer to our [Writer's Toolkit](https://grafana.com/docs/writers-toolkit/).
+
+- **Full README, macros, provisioning, troubleshooting, and DQL primer:**
+  <https://github.com/discostu105/grafana-dynatrace-datasource#readme>
+- **DQL reference:**
+  <https://docs.dynatrace.com/docs/discover-dynatrace/references/dynatrace-query-language>
 
 ## Contributing
-Do you want folks to contribute to the plugin or provide feedback through specific means? If so, tell them how!
--->
+
+Issues and pull requests are welcome — see
+[CONTRIBUTING.md](https://github.com/discostu105/grafana-dynatrace-datasource/blob/main/CONTRIBUTING.md).
+Report bugs and request features on the
+[issue tracker](https://github.com/discostu105/grafana-dynatrace-datasource/issues).
+
+## License
+
+[Apache-2.0](https://github.com/discostu105/grafana-dynatrace-datasource/blob/main/LICENSE)

@@ -18,3 +18,9 @@ linters:
   exclusions:
     paths:
       - node_modules
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    paths:
+      - node_modules

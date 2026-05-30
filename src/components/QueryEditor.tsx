@@ -3,7 +3,7 @@ import { QueryEditorProps } from '@grafana/data';
 import { Button, CodeEditor, ConfirmModal, InlineField, Input, RadioButtonGroup, Stack } from '@grafana/ui';
 import { DataSource } from '../datasource';
 import { BuilderState, DqlDataSourceOptions, DqlQuery, DqlQueryType, EditorMode } from '../types';
-import { DQL_LANGUAGE_ID, registerDqlLanguage } from '../dql/language';
+import { DQL_LANGUAGE_ID, formatDql, registerDqlLanguage } from '../dql/language';
 import { SELECTORS } from '../selectors';
 import { BuilderEditor } from './BuilderEditor';
 import { DEFAULT_BUILDER, dqlFromBuilder } from '../builder';
@@ -90,6 +90,17 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
         <Button size="sm" variant="secondary" onClick={onRunQuery} icon="play">
           {SELECTORS.queryEditor.runButtonLabel}
         </Button>
+        {editorMode === 'code' && (
+          <Button
+            size="sm"
+            variant="secondary"
+            icon="brackets-curly"
+            tooltip="Format DQL (Shift+Alt+F)"
+            onClick={() => onDqlChange(formatDql(query.dqlQuery ?? ''))}
+          >
+            {SELECTORS.queryEditor.formatButtonLabel}
+          </Button>
+        )}
       </Stack>
 
       {queryType === 'logs' && (

@@ -79,10 +79,10 @@ func TestParseRecordTime(t *testing.T) {
 func TestRecordsToLogFrame_Shape(t *testing.T) {
 	records := []map[string]interface{}{
 		{
-			"timestamp":  "2026-05-25T10:00:00Z",
-			"content":    "Hello from loxone",
-			"loglevel":   "INFO",
-			"host.name":  "lox",
+			"timestamp":    "2026-05-25T10:00:00Z",
+			"content":      "Hello from loxone",
+			"loglevel":     "INFO",
+			"host.name":    "lox",
 			"control.name": "Heizung",
 		},
 		{

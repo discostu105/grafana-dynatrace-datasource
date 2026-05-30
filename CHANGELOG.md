@@ -6,6 +6,35 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Format DQL** action in the query editor — a toolbar button and the
+  standard `Shift + Alt + F` binding lay out one top-level pipe command per
+  line via a pure, idempotent `formatDql` formatter (also registered as a
+  Monaco document-formatting provider).
+- Catalog-ready `src/README.md` (shown on Grafana.com), a custom plugin logo,
+  `CONTRIBUTING.md`, `SECURITY.md`, GitHub issue forms, and a pull-request
+  template.
+- Backend coverage gate in CI and `gofmt` enforcement via golangci-lint
+  formatters.
+- Plugin signing wired into the release workflow (via the
+  `GRAFANA_ACCESS_POLICY_TOKEN` secret).
+
+### Changed
+
+- README: corrected the status matrix (traces, visual builder, and Prometheus
+  metrics are shipped), aligned the documented token scopes with what each
+  query type needs, and added a PromQL/SQL primer plus alerting, annotations,
+  and troubleshooting sections.
+
+### Fixed
+
+- Resolved all Prettier and `gofmt` formatting drift so CI formatting checks
+  pass.
+- Migrated the frontend off deprecated `MutableDataFrame` / `Vector.get()`
+  APIs (`derivedFields`, trace post-processing) to standard `DataFrame` and
+  array access.
+
 ## [1.12.2] - 2026-05-25
 
 ### Added
