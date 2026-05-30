@@ -1,8 +1,8 @@
-import { MutableDataFrame, FieldType } from '@grafana/data';
+import { createDataFrame, FieldType } from '@grafana/data';
 import { stampTraceCorrelations } from './tracesPostprocess';
 
 function traceFrame() {
-  return new MutableDataFrame({
+  return createDataFrame({
     refId: 'A',
     meta: { preferredVisualisationType: 'trace' },
     fields: [{ name: 'traceID', type: FieldType.string, values: ['t1'] }],
@@ -36,7 +36,7 @@ describe('stampTraceCorrelations', () => {
   });
 
   it('does not stamp non-trace frames', () => {
-    const f = new MutableDataFrame({
+    const f = createDataFrame({
       refId: 'A',
       meta: { preferredVisualisationType: 'graph' as any },
       fields: [{ name: 'x', type: FieldType.string, values: ['y'] }],

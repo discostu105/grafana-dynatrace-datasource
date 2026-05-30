@@ -12,14 +12,7 @@
 // `summarize ... by:{bin(timestamp, …)}` is NOT how DQL buckets time —
 // that was a SQL-flavoured mistake. Use makeTimeseries.
 
-import type {
-  BuilderAggFn,
-  BuilderBucket,
-  BuilderFilter,
-  BuilderOperator,
-  BuilderSource,
-  BuilderState,
-} from './types';
+import type { BuilderAggFn, BuilderBucket, BuilderFilter, BuilderOperator, BuilderSource, BuilderState } from './types';
 
 export const DEFAULT_BUILDER: BuilderState = {
   source: 'logs',
@@ -43,15 +36,7 @@ export const BUILDER_SOURCES: BuilderSource[] = [
 
 export const BUILDER_OPERATORS: BuilderOperator[] = ['==', '!=', 'contains', 'matchesValue'];
 
-export const BUILDER_AGG_FNS: BuilderAggFn[] = [
-  'count',
-  'avg',
-  'sum',
-  'min',
-  'max',
-  'median',
-  'percentile',
-];
+export const BUILDER_AGG_FNS: BuilderAggFn[] = ['count', 'avg', 'sum', 'min', 'max', 'median', 'percentile'];
 
 export const BUILDER_BUCKETS: BuilderBucket[] = ['none', 'auto', '1m', '5m', '15m', '1h'];
 

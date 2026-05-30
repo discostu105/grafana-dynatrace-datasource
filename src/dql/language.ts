@@ -154,6 +154,90 @@ export const monarchLanguage: languages.IMonarchLanguage = {
   },
 };
 
+// collapseWhitespace squashes runs of whitespace that fall outside string
+// literals down to a single space, leaving string contents untouched.
+function collapseWhitespace(s: string): string {
+  let out = '';
+  let inString: string | null = null;
+  let pendingSpace = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    const prev = s[i - 1];
+    if (inString) {
+      out += ch;
+      if (ch === inString && prev !== '\\') {
+        inString = null;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      if (pendingSpace) {
+        out += ' ';
+        pendingSpace = false;
+      }
+      inString = ch;
+      out += ch;
+      continue;
+    }
+    if (/\s/.test(ch)) {
+      pendingSpace = out.length > 0;
+      continue;
+    }
+    if (pendingSpace) {
+      out += ' ';
+      pendingSpace = false;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+// formatDql pretty-prints a DQL query by putting each top-level pipe command on
+// its own line. Pipes inside strings or brackets are left alone, and internal
+// whitespace outside strings is normalised. It is a pure, idempotent function
+// (formatting an already-formatted query returns it unchanged), which makes it
+// safe to wire into both the Monaco formatting provider and the Format button.
+export function formatDql(dql: string): string {
+  if (!dql.trim()) {
+    return dql;
+  }
+  const segments: string[] = [];
+  let current = '';
+  let inString: string | null = null;
+  let depth = 0;
+  for (let i = 0; i < dql.length; i++) {
+    const ch = dql[i];
+    const prev = dql[i - 1];
+    if (inString) {
+      current += ch;
+      if (ch === inString && prev !== '\\') {
+        inString = null;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      inString = ch;
+      current += ch;
+      continue;
+    }
+    if (ch === '(' || ch === '[' || ch === '{') {
+      depth++;
+    } else if (ch === ')' || ch === ']' || ch === '}') {
+      depth = Math.max(0, depth - 1);
+    }
+    if (ch === '|' && depth === 0) {
+      segments.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  segments.push(current);
+
+  const cleaned = segments.map((s) => collapseWhitespace(s).trim()).filter((s, idx) => idx === 0 || s.length > 0);
+  return cleaned.map((s, idx) => (idx === 0 ? s : `| ${s}`)).join('\n');
+}
+
 export const languageConfig: languages.LanguageConfiguration = {
   comments: { lineComment: '//', blockComment: ['/*', '*/'] },
   brackets: [
@@ -223,6 +307,14 @@ export function registerDqlLanguage(monaco: Monaco, fetcher: AutocompleteFetcher
   monaco.languages.register({ id: LANGUAGE_ID });
   monaco.languages.setMonarchTokensProvider(LANGUAGE_ID, monarchLanguage);
   monaco.languages.setLanguageConfiguration(LANGUAGE_ID, languageConfig);
+
+  // Document formatter — one top-level pipe command per line. Enables the
+  // built-in "Format Document" action (Shift+Alt+F) inside the editor.
+  monaco.languages.registerDocumentFormattingEditProvider(LANGUAGE_ID, {
+    provideDocumentFormattingEdits(model: editor.ITextModel) {
+      return [{ range: model.getFullModelRange(), text: formatDql(model.getValue()) }];
+    },
+  });
 
   monaco.languages.registerCompletionItemProvider(LANGUAGE_ID, {
     triggerCharacters: ['.', ':', ' ', ',', '{', '|', '$'],

@@ -1,17 +1,16 @@
-import { MutableDataFrame } from '@grafana/data';
+import { createDataFrame, FieldType } from '@grafana/data';
 import { applyDerivedFields } from './derivedFields';
 import type { DerivedField } from './types';
 
 function logFrame(bodies: Array<string | null>) {
-  const f = new MutableDataFrame({
+  return createDataFrame({
     refId: 'A',
     meta: { preferredVisualisationType: 'logs' },
     fields: [
-      { name: 'time', type: 'time' as any, values: bodies.map((_, i) => i * 1000) },
-      { name: 'body', type: 'string' as any, values: bodies },
+      { name: 'time', type: FieldType.time, values: bodies.map((_, i) => i * 1000) },
+      { name: 'body', type: FieldType.string, values: bodies },
     ],
   });
-  return f;
 }
 
 const TRACE_RULE: DerivedField = {
@@ -33,19 +32,19 @@ describe('applyDerivedFields', () => {
     const enriched = out[0];
     expect(enriched.fields.map((f) => f.name)).toEqual(['time', 'body', 'TraceID']);
     const traceField = enriched.fields.find((f) => f.name === 'TraceID')!;
-    expect(traceField.values.get(0)).toBeNull();
-    expect(traceField.values.get(1)).toBe('abc123');
-    expect(traceField.values.get(2)).toBe('def456');
+    expect(traceField.values[0]).toBeNull();
+    expect(traceField.values[1]).toBe('abc123');
+    expect(traceField.values[2]).toBe('def456');
     const link = traceField.config!.links![0];
     expect(link.url).toContain('${__value.raw}');
     expect(link.title).toBe('TraceID');
   });
 
   it('skips frames that are not logs-typed', () => {
-    const f = new MutableDataFrame({
+    const f = createDataFrame({
       refId: 'A',
       meta: { preferredVisualisationType: 'graph' as any },
-      fields: [{ name: 'body', type: 'string' as any, values: ['trace_id=abc'] }],
+      fields: [{ name: 'body', type: FieldType.string, values: ['trace_id=abc'] }],
     });
     const out = applyDerivedFields([f], [TRACE_RULE]);
     expect(out[0].fields.length).toBe(1);

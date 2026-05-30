@@ -21,5 +21,6 @@ export const SELECTORS = {
     legendLabel: 'Legend',
     bodyFieldLabel: 'Body field',
     runButtonLabel: 'Run',
+    formatButtonLabel: 'Format',
   },
 } as const;

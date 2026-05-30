@@ -1,19 +1,7 @@
 import React, { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { Button, Combobox, Field as UiField, Input, Select, Stack } from '@grafana/ui';
-import type {
-  BuilderState,
-  BuilderFilter,
-  BuilderOperator,
-  BuilderAggFn,
-  BuilderBucket,
-  DataObject,
-} from '../types';
-import {
-  BUILDER_AGG_FNS,
-  BUILDER_BUCKETS,
-  BUILDER_OPERATORS,
-  BUILDER_SOURCES,
-} from '../builder';
+import type { BuilderState, BuilderFilter, BuilderOperator, BuilderAggFn, BuilderBucket, DataObject } from '../types';
+import { BUILDER_AGG_FNS, BUILDER_BUCKETS, BUILDER_OPERATORS, BUILDER_SOURCES } from '../builder';
 
 interface Props {
   value: BuilderState;
@@ -122,13 +110,7 @@ export function BuilderEditor({ value, onChange, loadDataObjects }: Props) {
   );
 }
 
-function FiltersList({
-  value,
-  onChange,
-}: {
-  value: BuilderFilter[];
-  onChange: (next: BuilderFilter[]) => void;
-}) {
+function FiltersList({ value, onChange }: { value: BuilderFilter[]; onChange: (next: BuilderFilter[]) => void }) {
   const add = () => onChange([...value, { field: '', operator: '==', value: '' }]);
   const remove = (idx: number) => onChange(value.filter((_, i) => i !== idx));
   const update = (idx: number, patch: Partial<BuilderFilter>) =>

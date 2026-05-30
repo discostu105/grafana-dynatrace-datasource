@@ -1,9 +1,9 @@
-import { MutableDataFrame, FieldType } from '@grafana/data';
+import { createDataFrame, FieldType } from '@grafana/data';
 import { enhanceTraceListFrames } from './tracesPostprocess';
 import type { DqlQuery } from './types';
 
 function listFrame(traceIDs: string[]) {
-  return new MutableDataFrame({
+  return createDataFrame({
     refId: 'A',
     fields: [
       { name: 'trace.id', type: FieldType.string, values: traceIDs },
@@ -47,7 +47,7 @@ describe('enhanceTraceListFrames', () => {
   });
 
   it('skips trace-detail frames (already have the trace vis hint)', () => {
-    const f = new MutableDataFrame({
+    const f = createDataFrame({
       refId: 'A',
       meta: { preferredVisualisationType: 'trace' },
       fields: [
@@ -61,7 +61,7 @@ describe('enhanceTraceListFrames', () => {
   });
 
   it('handles a frame that already has a traceID column (no trace.id)', () => {
-    const f = new MutableDataFrame({
+    const f = createDataFrame({
       refId: 'A',
       fields: [{ name: 'traceID', type: FieldType.string, values: ['abc'] }],
     });

@@ -3,9 +3,9 @@ package main
 import (
 	"os"
 
+	"github.com/discostu105/dynatracegrail/pkg/plugin"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/discostu105/dynatracegrail/pkg/plugin"
 )
 
 func main() {

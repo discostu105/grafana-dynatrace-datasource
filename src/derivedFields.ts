@@ -3,7 +3,7 @@
 // captured value with a DataLink (clickable button) pointing at the URL
 // template. Matches the pattern grafana-loki-datasource uses.
 
-import { DataFrame, DataLink, Field, FieldType, MutableDataFrame } from '@grafana/data';
+import { DataFrame, DataLink, Field, FieldType } from '@grafana/data';
 import { DerivedField } from './types';
 
 const LOGS_VIS = 'logs';
@@ -45,7 +45,7 @@ function maybeEnhance(frame: DataFrame, rules: DerivedField[]): DataFrame {
   }
 
   for (let i = 0; i < len; i++) {
-    const raw = bodyField.values?.get ? bodyField.values.get(i) : (bodyField.values as unknown[])?.[i];
+    const raw = (bodyField.values as unknown[] | undefined)?.[i];
     const body = typeof raw === 'string' ? raw : raw == null ? '' : String(raw);
     if (!body) {
       continue;
@@ -59,7 +59,7 @@ function maybeEnhance(frame: DataFrame, rules: DerivedField[]): DataFrame {
     }
   }
 
-  const out = new MutableDataFrame(frame);
+  const addedFields: Field[] = [];
   for (const { rule } of compiled) {
     const values = extracted[rule.name];
     if (!values.some((v) => v !== null)) {
@@ -80,13 +80,16 @@ function maybeEnhance(frame: DataFrame, rules: DerivedField[]): DataFrame {
         query: { dqlQuery: rule.url },
       };
     }
-    const f: Field = {
+    addedFields.push({
       name: rule.name,
       type: FieldType.string,
       config: { links: [link] },
       values: values as unknown as Field['values'],
-    };
-    out.addField(f);
+    });
   }
-  return out;
+  if (!addedFields.length) {
+    return frame;
+  }
+  // Shallow-clone the frame with the extra derived-field columns appended.
+  return { ...frame, fields: [...frame.fields, ...addedFields] };
 }

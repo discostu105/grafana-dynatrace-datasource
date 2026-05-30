@@ -248,17 +248,17 @@ func encodeTraceTags(rec map[string]interface{}) string {
 }
 
 var traceReservedKeys = map[string]struct{}{
-	"trace.id":                       {},
-	"span.id":                        {},
-	"span.parent_id":                 {},
-	"span.name":                      {},
-	"service.name":                   {},
-	"dt.service.name":                {},
-	"start_time":                     {},
-	"end_time":                       {},
-	"duration":                       {},
-	"status.code":                    {},
-	"dt.failure_detection.verdict":   {},
+	"trace.id":                        {},
+	"span.id":                         {},
+	"span.parent_id":                  {},
+	"span.name":                       {},
+	"service.name":                    {},
+	"dt.service.name":                 {},
+	"start_time":                      {},
+	"end_time":                        {},
+	"duration":                        {},
+	"status.code":                     {},
+	"dt.failure_detection.verdict":    {},
 	"dt.failure_detection.ruleset_id": {},
 }
 

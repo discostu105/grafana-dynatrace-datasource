@@ -25,9 +25,7 @@ describe('dqlFromBuilder', () => {
         bucket: '5m',
       })
     );
-    expect(dql).toBe(
-      'fetch spans\n| makeTimeseries result = avg(duration), interval: 5m, by:{service.name}'
-    );
+    expect(dql).toBe('fetch spans\n| makeTimeseries result = avg(duration), interval: 5m, by:{service.name}');
   });
 
   it('emits filter rows joined with lowercase and', () => {
